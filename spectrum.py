@@ -29,7 +29,7 @@ else:
 
 class Fit(object):
 	
-	def __init__(self,spectrumlist,model,prior,parameters):
+	def __init__(self,spectrumlist,model,prior,parameters,reference =True):
 		'''
 		
 		:param spectrumlist:
@@ -42,7 +42,7 @@ class Fit(object):
 		self.prior = prior
 		self.parameters = parameters
 		self.n_params = len(parameters)
-		
+		self.reference = reference
 		
 		
 	def log_like(self,cube,ndim,nparams):
@@ -67,9 +67,15 @@ class Fit(object):
 					print('the model`s return is ',cube)
 					return -np.inf
 			yu = spec.transform(spec1)
+			
+			
 			if spec.effective_index is not None:
+				if self.reference:
+					loglike = loglike - 0.5 * (((spec1[spec.effective_index1[0]:spec.effective_index1[-1]] - spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) / spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) ** 2).sum()
 				loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
 			else:
+				if self.reference:
+					loglike = loglike - 0.5 * (((spec1 - spec.reference) / spec.reference) ** 2).sum()
 				loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
 		return loglike
 	
@@ -151,7 +157,7 @@ class Fit(object):
 				plt.plot(e_c,e_c**n*self.model(e_c,best_value) , '-',label = 'best model')
 				
 		
-	def plot_data(self,a1,ax = None,reference = True):
+	def plot_data(self,a1,n = 0,ax = None,reference = True):
 		'''
 		
 		:param a1:
@@ -168,26 +174,26 @@ class Fit(object):
 			effinde = spec.effective_index
 			if effinde is not None:
 				if ax is not None:
-					ax.errorbar(e_c0[effinde[0]:effinde[-1]],sp[effinde[0]:effinde[-1]],yerr = sp_er[effinde[0]:effinde[-1]],elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
+					ax.errorbar(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*sp[effinde[0]:effinde[-1]],yerr = e_c0[effinde[0]:effinde[-1]]**n*sp_er[effinde[0]:effinde[-1]],elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
 					if reference:
-						ax.plot(e_c0[effinde[0]:effinde[-1]],spec.transform(xxx)[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
-					ax.plot(e_c0[effinde[0]:effinde[-1]],spec.transform(self.model(e_c,best_value))[effinde[0]:effinde[-1]],label = spec.name + ' model')
+						ax.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(xxx)[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
+					ax.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(self.model(e_c,best_value))[effinde[0]:effinde[-1]],label = spec.name + ' model')
 				else:
-					plt.errorbar(e_c0[effinde[0]:effinde[-1]],sp[effinde[0]:effinde[-1]],yerr = sp_er[effinde[0]:effinde[-1]],elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
+					plt.errorbar(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*sp[effinde[0]:effinde[-1]],yerr = e_c0[effinde[0]:effinde[-1]]**n*sp_er[effinde[0]:effinde[-1]],elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
 					if reference:
-						plt.plot(e_c0[effinde[0]:effinde[-1]],spec.transform(xxx)[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
-					plt.plot(e_c0[effinde[0]:effinde[-1]],spec.transform(self.model(e_c,best_value))[effinde[0]:effinde[-1]],label = spec.name + ' model')
+						plt.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(xxx)[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
+					plt.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(self.model(e_c,best_value))[effinde[0]:effinde[-1]],label = spec.name + ' model')
 			else:
 				if ax is not None:
-					ax.errorbar(e_c0,sp,yerr = sp_er,elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
+					ax.errorbar(e_c0,e_c0**n*sp,yerr = e_c0**n*sp_er,fmt = '.',elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
 					if reference:
 						ax.plot(e_c0,spec.transform(xxx), '-.',label = spec.name + ' reference')
-					ax.plot(e_c0,spec.transform(self.model(e_c,best_value)),label = spec.name + ' model')
+					ax.plot(e_c0,e_c0**n*spec.transform(self.model(e_c,best_value)),label = spec.name + ' model')
 				else:
-					plt.errorbar(e_c0,sp,yerr = sp_er,elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
+					plt.errorbar(e_c0,e_c0**n*sp,yerr = e_c0**n*sp_er,fmt = '.',elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
 					if reference:
-						plt.plot(e_c0,spec.transform(xxx), '-.',label = spec.name + ' reference')
-					plt.plot(e_c0,spec.transform(self.model(e_c,best_value)),label = spec.name + ' model')
+						plt.plot(e_c0,e_c0**n*spec.transform(xxx), '-.',label = spec.name + ' reference')
+					plt.plot(e_c0,e_c0**n*spec.transform(self.model(e_c,best_value)),label = spec.name + ' model')
 
 			
 	def plot_corner(self,a1):
@@ -235,25 +241,37 @@ class Spectrum(object):
 		matr = hl[2].data['MATRIX']
 		matr[-1] = np.zeros(128)
 		matr = np.vstack(matr)
+		self.matr = matr
 		self.R = np.mat(matr)
 		self.e_add_num = e_add_num
 		self.name = spectrum_name
 		self.e_lo = hl[2].data['ENERG_LO']#140
 		self.e_hi = hl[2].data['ENERG_HI']
-		self.e_add = self.get_e_add(self.e_lo,self.e_hi,self.e_add_num)
 		self.e_min = hl[1].data['E_MIN']#128
 		self.e_max = hl[1].data['E_MAX']
+		
 		self.e_c = np.sqrt(self.e_min*self.e_max)
-		self.spectrum = np.array(spectrum)
-		self.spectrum_err = np.array(spectrum_err)
+		self.spectrum = np.array(spectrum)/(self.e_max-self.e_min)
+		self.spectrum_err = np.array(spectrum_err)/np.sqrt(self.e_max-self.e_min)
 		self.Y = np.mat(self.spectrum)
 		self.Y_E = np.mat(self.spectrum_err)
 		self.effective_band = effective_band
 		if effective_band is not None:
+			e_c1 = np.sqrt(self.e_lo*self.e_hi)
+			index1 = np.where((e_c1>=effective_band[0])&(e_c1<=effective_band[1]))[0]
+			self.effective_index1 = [index1[0],index1[-1]+1]
+			#self.e_lo = self.e_lo[index1]
+			#self.e_hi = self.e_hi[index1]
+			#self.R = np.mat(self.matr[index1])
+			
 			index_ = np.where((self.e_c>=effective_band[0])&(self.e_c<=effective_band[1]))[0]
 			self.effective_index = [index_[0],index_[-1]+1]
 		else:
+			self.effective_index1=None
 			self.effective_index = None
+		self.e_add = self.get_e_add(self.e_lo, self.e_hi, self.e_add_num)
+		self.reference = self.get_reference()[1]
+		
 	def get_e_add(self,e_lo,e_hi,nn = 5):
 		e_add = np.array([])
 		for i in range(len(e_lo)):
@@ -266,8 +284,16 @@ class Spectrum(object):
 		self.Y = np.mat(self.spectrum)
 		self.Y_E = np.mat(self.spectrum_err)
 		if effective_band is not None:
+			e_c1 = np.sqrt(self.e_lo*self.e_hi)
+			index1 = np.where((e_c1>=effective_band[0])&(e_c1<=effective_band[1]))[0]
+			self.effective_index1 = [index1[0],index1[-1]+1]
+			#self.e_lo = self.e_lo[index1]
+			#self.e_hi = self.e_hi[index1]
+			#self.R = np.mat(self.matr[index1])
 			index_ = np.where((self.e_c>=effective_band[0])&(self.e_c<=effective_band[1]))[0]
 			self.effective_index = [index_[0],index_[-1]+1]
+		self.e_add = self.get_e_add(self.e_lo, self.e_hi, self.e_add_num)
+		self.reference = self.get_reference()[1]
 		
 	def get_reference(self):
 		x0 = np.zeros(len(self.e_lo))
