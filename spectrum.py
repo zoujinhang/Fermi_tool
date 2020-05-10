@@ -2,18 +2,30 @@ from astropy.io import fits
 import numpy as np
 from scipy import optimize
 from Data_analysis.Baseline import WhittakerSmooth
+import Data_analysis.file as myfile
 #import json
 import pymultinest
 from .PlotMarginalModes import PlotMarginalModes
 import matplotlib.pyplot as plt
 import ctypes
 import sys
+import os
 paths = sys.path
-c_lib_link = ''
+c_lib_link = None
 for path in paths:
-	fand = path+'/'
-
-clib = ctypes.cdll.LoadLibrary('/home/laojin/my_lat/python_c/spectrum_tool.so')
+	fand = path+'/Fermi_tool/c_lib/'
+	if os.path.exists(fand):
+		sonamelist = myfile.findfile(fand,'spectrum_tool.so')
+		if len(sonamelist)>0:
+			
+			c_lib_link = fand+sonamelist[0]
+			print('the C lib link is ',c_lib_link)
+			break
+if c_lib_link is not None:
+	clib = ctypes.cdll.LoadLibrary(c_lib_link)
+else:
+	print('can not find the C lib of spectrum_tool.os!')
+#clib = ctypes.cdll.LoadLibrary('/home/laojin/my_lat/python_c/spectrum_tool.so')
 
 class Fit(object):
 	
@@ -60,32 +72,35 @@ class Fit(object):
 			else:
 				loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
 		return loglike
-	def log_like_c(self,cube,ndim,nparams):
-		loglike = 0.
-		for spec in self.spectrumlist:
-			e_add = spec.e_add
-			try:
-				rate = self.model(e_add,cube)
-				if True in np.isnan(rate):
+	
+	if c_lib_link is not None:
+		def log_like_c(self,cube,ndim,nparams):
+			loglike = 0.
+			for spec in self.spectrumlist:
+				e_add = spec.e_add
+				try:
+					rate = self.model(e_add,cube)
+					if True in np.isnan(rate):
+						return -np.inf
+				except:
+					print('there are something wrong in your model!')
+					print('the model`s return is ',cube)
 					return -np.inf
-			except:
-				print('there are something wrong in your model!')
-				print('the model`s return is ',cube)
-				return -np.inf
-			spec1 = self.get_A(rate,spec.e_add_num)
-			yu = spec.transform(spec1)
-			if spec.effective_index is not None:
-				loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
-			else:
-				loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
-		return loglike
-
-	def get_A(self,spe,add_n):
-		n_spe = len(spe)
-		spe = (ctypes.c_double * n_spe)(*list(spe))
-		ret = (ctypes.c_double* int(n_spe/add_n))()
-		clib.A_spec(spe,ret,n_spe,add_n,int(n_spe/add_n))
-		return np.array(ret)
+				spec1 = self.get_A(rate,spec.e_add_num)
+				yu = spec.transform(spec1)
+				if spec.effective_index is not None:
+					loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
+				else:
+					loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
+			return loglike
+	
+	if c_lib_link is not None:
+		def get_A(self,spe,add_n):
+			n_spe = len(spe)
+			spe = (ctypes.c_double * n_spe)(*list(spe))
+			ret = (ctypes.c_double* int(n_spe/add_n))()
+			clib.A_spec(spe,ret,n_spe,add_n,int(n_spe/add_n))
+			return np.array(ret)
 	
 	def run(self,outputfiles_basename,resume = False, verbose = True):
 		'''
@@ -95,7 +110,10 @@ class Fit(object):
 		:param verbose:
 		:return:
 		'''
-		pymultinest.run(self.log_like_c, self.prior, self.n_params, outputfiles_basename=outputfiles_basename,resume = resume, verbose = verbose)
+		if c_lib_link is not None:
+			pymultinest.run(self.log_like_c, self.prior, self.n_params, outputfiles_basename=outputfiles_basename,resume = resume, verbose = verbose)
+		else:
+			pymultinest.run(self.log_like, self.prior, self.n_params, outputfiles_basename=outputfiles_basename,resume = resume, verbose = verbose)
 		a1 = pymultinest.Analyzer(outputfiles_basename=outputfiles_basename, n_params = self.n_params)
 		return a1
 		
