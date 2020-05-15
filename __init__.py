@@ -341,6 +341,7 @@ def get_spectrum(t,ch,ch_n,edges,bg_dt):
 		bin_err = np.sqrt(bin_n1)/len_edges
 		bin_err[bin_err<=0] = 1.0
 		cs1 = bin_rate1-bs1
+		cs1[cs1<0]=0
 		data.append(list(cs1))
 		data_err.append(list(bin_err))
 		

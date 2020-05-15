@@ -7,11 +7,11 @@ gcc -std=c99 specturn_tool.c -shared -o spectrum_tool.so.6
 
 */
 
-void A_spec(double spec[],double retur[],int lspec,int nn,int e_n);
+void A_spec(double spec[],double e_lo[] ,double e_hi[] ,double retur[],int lspec,int nn,int e_n);
 
 
 
-void A_spec(double spec[],double retur[],int lspec,int nn,int e_n)
+void A_spec(double spec[],double e_lo[] ,double e_hi[] ,double retur[],int lspec,int nn,int e_n)
 {
 	int i,j,k;
 	float sum;
@@ -25,7 +25,7 @@ void A_spec(double spec[],double retur[],int lspec,int nn,int e_n)
 			sum += spec[i];
 			j+=1;
 			if (j >= nn){
-				retur[k] = sum/nn;
+				retur[k] = (sum/nn)*(e_hi[k]-e_lo[k]);
 				//printf("%f\n",retur[k]);
 				sum = 0.;
 				j = 0;

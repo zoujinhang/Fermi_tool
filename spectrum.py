@@ -5,6 +5,7 @@ from Data_analysis.Baseline import WhittakerSmooth
 import Data_analysis.file as myfile
 #import json
 import pymultinest
+from .analysis import Analyzer
 from .PlotMarginalModes import PlotMarginalModes
 import matplotlib.pyplot as plt
 import ctypes
@@ -27,9 +28,20 @@ else:
 	print('can not find the C lib of spectrum_tool.os!')
 #clib = ctypes.cdll.LoadLibrary('/home/laojin/my_lat/python_c/spectrum_tool.so')
 
+class Prior(object):
+	def __init__(self,limit,log = False):
+		self.log = log
+		self.limit_width = max(limit)-min(limit)
+		self.low = min(limit)
+	def get_value(self,cube):
+		if self.log:
+			return 10**self.limit_width*cube+self.low
+		else:
+			return self.limit_width*cube+self.low
+		
 class Fit(object):
 	
-	def __init__(self,spectrumlist,model,prior,parameters,reference =True):
+	def __init__(self,spectrumlist,model,priorlist,parameters,reference =False,reference_w = 0.0001):
 		'''
 		
 		:param spectrumlist:
@@ -39,11 +51,15 @@ class Fit(object):
 		self.spec_num = len(spectrumlist)
 		self.spectrumlist = spectrumlist
 		self.model = model
-		self.prior = prior
+		self.prior_list = priorlist
 		self.parameters = parameters
 		self.n_params = len(parameters)
 		self.reference = reference
+		self.reference_rate = reference_w
 		
+	def prior(self,cube,ndim,nparams):
+		for i in range(nparams):
+			cube[i] = self.prior_list[i].get_value(cube[i])
 		
 	def log_like(self,cube,ndim,nparams):
 		loglike = 0.
@@ -71,12 +87,19 @@ class Fit(object):
 			
 			if spec.effective_index is not None:
 				if self.reference:
-					loglike = loglike - 0.5 * (((spec1[spec.effective_index1[0]:spec.effective_index1[-1]] - spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) / spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) ** 2).sum()
-				loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
+					loglike_data = -0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
+					loglike_refer = - 0.5 * (((spec1[spec.effective_index1[0]:spec.effective_index1[-1]] - spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) ) ** 2).sum()#/ spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]
+					loglike = loglike + (1-self.reference_rate)*loglike_data + self.reference_rate*loglike_refer
+				
+				else:
+					loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
 			else:
 				if self.reference:
-					loglike = loglike - 0.5 * (((spec1 - spec.reference) / spec.reference) ** 2).sum()
-				loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
+					loglike_refer = - 0.5 * (((spec1 - spec.reference) ) ** 2).sum()#/ spec.reference
+					loglike_data = -0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
+					loglike = loglike + (1-self.reference_rate)*loglike_data + self.reference_rate*loglike_refer
+				else:
+					loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
 		return loglike
 	
 	if c_lib_link is not None:
@@ -92,20 +115,27 @@ class Fit(object):
 					print('there are something wrong in your model!')
 					print('the model`s return is ',cube)
 					return -np.inf
-				spec1 = self.get_A(rate,spec.e_add_num)
+				spec1 = self.get_A(rate,spec.e_lo,spec.e_hi,spec.e_add_num)
 				yu = spec.transform(spec1)
 				if spec.effective_index is not None:
+					if self.reference:
+						loglike = loglike - 0.5 * (((spec1[spec.effective_index1[0]:spec.effective_index1[-1]] - spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) / spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) ** 2).sum()
 					loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
 				else:
+					if self.reference:
+						loglike = loglike - 0.5 * (((spec1 - spec.reference) / spec.reference) ** 2).sum()
 					loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
 			return loglike
 	
 	if c_lib_link is not None:
-		def get_A(self,spe,add_n):
+		def get_A(self,spe,e_lo,e_hi,add_n):
 			n_spe = len(spe)
+			n_e = len(e_lo)
 			spe = (ctypes.c_double * n_spe)(*list(spe))
-			ret = (ctypes.c_double* int(n_spe/add_n))()
-			clib.A_spec(spe,ret,n_spe,add_n,int(n_spe/add_n))
+			e_lo = (ctypes.c_double * n_e)(*list(e_lo))
+			e_hi = (ctypes.c_double * n_e)(*list(e_hi))
+			ret = (ctypes.c_double * n_e)()
+			clib.A_spec(spe,e_lo,e_hi,ret,n_spe,add_n,n_e)
 			return np.array(ret)
 	
 	def run(self,outputfiles_basename,resume = False, verbose = True):
@@ -120,7 +150,8 @@ class Fit(object):
 			pymultinest.run(self.log_like_c, self.prior, self.n_params, outputfiles_basename=outputfiles_basename,resume = resume, verbose = verbose)
 		else:
 			pymultinest.run(self.log_like, self.prior, self.n_params, outputfiles_basename=outputfiles_basename,resume = resume, verbose = verbose)
-		a1 = pymultinest.Analyzer(outputfiles_basename=outputfiles_basename, n_params = self.n_params)
+		#a1 = pymultinest.Analyzer(outputfiles_basename=outputfiles_basename, n_params = self.n_params)
+		a1 = Analyzer(outputfiles_basename=outputfiles_basename, n_params = self.n_params)
 		return a1
 		
 	def plot_model(self,a1,n = 0,ax = None,reference = True):
@@ -146,9 +177,9 @@ class Fit(object):
 			for index,spec in enumerate(self.spectrumlist):
 				e_c,xxx = spec.get_reference()
 				if ax is not None:
-					ax.plot(e_c, e_c**n*xxx, '-.',label =spec.name +  ' reference')
+					ax.plot(e_c, e_c**n*xxx/(spec.e_hi-spec.e_lo), '-.',label =spec.name +  ' reference')
 				else:
-					plt.plot(e_c,e_c**n*xxx , '-.',label =spec.name + ' reference')
+					plt.plot(e_c,e_c**n*xxx/(spec.e_hi-spec.e_lo) , '-.',label =spec.name + ' reference')
 				
 		for e_c in e_c_list:
 			if ax is not None:
@@ -169,32 +200,92 @@ class Fit(object):
 		for spec in self.spectrumlist:
 			e_c0 = spec.e_c
 			e_c,xxx = spec.get_reference()
-			sp = spec.spectrum
-			sp_er = spec.spectrum_err
+			xxx_sp = spec.transform(xxx)/(spec.e_max-spec.e_min)
+			sp = spec.spectrum/(spec.e_max-spec.e_min)
+			e_add = spec.e_add
+			rate = self.model(e_add,best_value)
+			spec1 = self.get_A(rate,spec.e_lo,spec.e_hi,spec.e_add_num)
+			model_sp = spec.transform(spec1)/(spec.e_max-spec.e_min)
+			sp_er = spec.spectrum_err/np.sqrt(spec.e_max-spec.e_min)
 			effinde = spec.effective_index
 			if effinde is not None:
 				if ax is not None:
-					ax.errorbar(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*sp[effinde[0]:effinde[-1]],yerr = e_c0[effinde[0]:effinde[-1]]**n*sp_er[effinde[0]:effinde[-1]],elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
+					ax.errorbar(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*sp[effinde[0]:effinde[-1]],yerr = e_c0[effinde[0]:effinde[-1]]**n*sp_er[effinde[0]:effinde[-1]],elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
 					if reference:
-						ax.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(xxx)[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
-					ax.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(self.model(e_c,best_value))[effinde[0]:effinde[-1]],label = spec.name + ' model')
+						ax.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*xxx_sp[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
+					ax.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*model_sp[effinde[0]:effinde[-1]],label = spec.name + ' model')
 				else:
-					plt.errorbar(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*sp[effinde[0]:effinde[-1]],yerr = e_c0[effinde[0]:effinde[-1]]**n*sp_er[effinde[0]:effinde[-1]],elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
+					plt.errorbar(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*sp[effinde[0]:effinde[-1]],yerr = e_c0[effinde[0]:effinde[-1]]**n*sp_er[effinde[0]:effinde[-1]],elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
 					if reference:
-						plt.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(xxx)[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
-					plt.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*spec.transform(self.model(e_c,best_value))[effinde[0]:effinde[-1]],label = spec.name + ' model')
+						plt.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*xxx_sp[effinde[0]:effinde[-1]], '-.',label = spec.name + ' reference')
+					plt.plot(e_c0[effinde[0]:effinde[-1]],e_c0[effinde[0]:effinde[-1]]**n*model_sp[effinde[0]:effinde[-1]],label = spec.name + ' model')
 			else:
 				if ax is not None:
 					ax.errorbar(e_c0,e_c0**n*sp,yerr = e_c0**n*sp_er,fmt = '.',elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
 					if reference:
-						ax.plot(e_c0,spec.transform(xxx), '-.',label = spec.name + ' reference')
-					ax.plot(e_c0,e_c0**n*spec.transform(self.model(e_c,best_value)),label = spec.name + ' model')
+						ax.plot(e_c0,e_c0**n*xxx_sp, '-.',label = spec.name + ' reference')
+					ax.plot(e_c0,e_c0**n*model_sp,label = spec.name + ' model')
 				else:
 					plt.errorbar(e_c0,e_c0**n*sp,yerr = e_c0**n*sp_er,fmt = '.',elinewidth=2,capsize=2,label = spec.name + ' data',alpha=0.3)
 					if reference:
-						plt.plot(e_c0,e_c0**n*spec.transform(xxx), '-.',label = spec.name + ' reference')
-					plt.plot(e_c0,e_c0**n*spec.transform(self.model(e_c,best_value)),label = spec.name + ' model')
-
+						plt.plot(e_c0,e_c0**n*xxx_sp, '-.',label = spec.name + ' reference')
+					plt.plot(e_c0,e_c0**n*model_sp,label = spec.name + ' model')
+	def plot_data_in_model(self,a1,ax = None):
+		best_value = a1.get_best_fit()['parameters']
+		for spec in self.spectrumlist:
+			e_c0 = spec.e_c
+			#e_c = spec.e_c1
+			sp = spec.spectrum/(spec.e_max-spec.e_min)
+			e_add = spec.e_add
+			rate = self.model(e_add, best_value)
+			spec1 = self.get_A(rate, spec.e_lo, spec.e_hi, spec.e_add_num)
+			sp_model = spec.transform(spec1) / (spec.e_max - spec.e_min)
+			sp_er = spec.spectrum_err/np.sqrt(spec.e_max-spec.e_min)
+			effinde = spec.effective_index
+			if effinde is not None:
+				if ax is not None:
+					ax.errorbar(e_c0[effinde[0]:effinde[-1]],sp[effinde[0]:effinde[-1]]-sp_model[effinde[0]:effinde[-1]],yerr = sp_er[effinde[0]:effinde[-1]],elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+				
+				else:
+					plt.errorbar(e_c0[effinde[0]:effinde[-1]],sp[effinde[0]:effinde[-1]]-sp_model[effinde[0]:effinde[-1]],yerr = sp_er[effinde[0]:effinde[-1]],elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+				
+					
+			else:
+				if ax is not None:
+					
+					ax.errorbar(e_c0,sp-sp_model,yerr = sp_er,elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+					
+				else:
+					plt.errorbar(e_c0,sp-sp_model,yerr = sp_er,elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+		if ax is not None:
+			ax.axhline(y=0,label = 'model',linestyle = '-.')
+		else:
+			plt.axhline(y=0,label = 'model',linestyle = '-.')
+					
+	def plot_data_in_reference(self,ax = None):
+		for spec in self.spectrumlist:
+			e_c0 = spec.e_c
+			sp = spec.spectrum/(spec.e_max-spec.e_min)
+			sp_er = spec.spectrum_err/np.sqrt(spec.e_max-spec.e_min)
+			e_c,xxx = spec.get_reference()
+			xxx_sp = spec.transform(xxx)/(spec.e_max-spec.e_min)
+			effinde = spec.effective_index
+			if effinde is not None:
+				if ax is not None:
+					ax.errorbar(e_c0[effinde[0]:effinde[-1]],sp[effinde[0]:effinde[-1]]-xxx_sp[effinde[0]:effinde[-1]],yerr = sp_er[effinde[0]:effinde[-1]],elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+				else:
+					plt.errorbar(e_c0[effinde[0]:effinde[-1]],sp[effinde[0]:effinde[-1]]-xxx_sp[effinde[0]:effinde[-1]],yerr = sp_er[effinde[0]:effinde[-1]],elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+			else:
+				if ax is not None:
+					ax.errorbar(e_c0,sp-xxx_sp,yerr = sp_er,elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+				else:
+					plt.errorbar(e_c0,sp-xxx_sp,yerr = sp_er,elinewidth=1,capsize=2,label = spec.name + ' data',alpha=0.5,fmt = '.')
+		if ax is not None :
+			ax.axhline(y = 0,label = 'reference',linestyle = '-.')
+		else:
+			plt.axhline(y=0,label = 'reference',linestyle = '-.')
+			
+			
 			
 	def plot_corner(self,a1):
 		'''
@@ -202,14 +293,43 @@ class Fit(object):
 		:param a1:
 		:return:
 		'''
+		
 		c = a1.get_stats()['modes'][0]
+		#print('23232323')
+		#print(a1.get_stats()['modes'])
+		maximum = np.array(c['maximum'])
+		
 		mean = np.array(c['mean'])
 		sigma = np.array(c['sigma'])
-		maximum = np.array(c['maximum'])
-		dx = mean-maximum
-		sigmal = sigma-dx
-		sigmah = sigma+dx
+
+		'''
+		equ_w = a1.get_equal_weighted_posterior()
+		loglike = np.exp(equ_w.T[-1])
+		loglikemin = loglike.min()
+		loglikemax = loglike.max()
+		d_like = loglikemax-loglikemin
+	
+		vv = loglikemax-0.954*d_like
+		
+		good_index = np.where(loglike>vv)[0]
+		good_equ_w = equ_w[good_index][:,:-1]
+		mean = good_equ_w.mean(axis = 0)
+		sigma = 1*good_equ_w.std(ddof=1,axis =0)
+		###
+		'''
+		dx = mean - maximum
+		
 		p = PlotMarginalModes(a1)
+		sigmal = sigma - dx
+		sigmah = sigma + dx
+		uplims = np.zeros(len(sigmal),dtype=bool)
+		lolims = np.zeros(len(sigmal),dtype=bool)
+		#l_index = np.where(sigmal<0)[0]
+		#h_index = np.where()
+		lolims[[sigmal<=0]]=True
+		uplims[[sigmah<=0]]=True
+		sigmal[sigmal < 0] = 0
+		sigmah[sigmah < 0] = 0
 		plt.figure(figsize=(5*self.n_params,5*self.n_params))
 		for i in range(self.n_params):
 			for j in range(i,self.n_params):
@@ -218,7 +338,9 @@ class Fit(object):
 					plt.title(self.parameters[j],size = 30)
 					plt.tick_params(labelsize = 15)
 					p.plot_marginal(j, with_ellipses = True, with_points = False, grid_points=50)
-					plt.errorbar(maximum[j],0,xerr=[[sigmal[j]],[sigmah[j]]],fmt = 'o',ecolor = 'r',capthick=2,color = 'r')
+					plt.errorbar(maximum[j],0,xerr=[[sigmal[j]],[sigmah[j]]],xlolims=lolims[j],xuplims=uplims[j],
+					             markersize=10,elinewidth = 3,
+					             fmt = 'o',ecolor = 'r',capthick=5,color = 'r')
 					if(j == 0):
 						plt.ylabel("Probability",size = 30)
 						plt.xlabel(self.parameters[j],size = 30)
@@ -227,7 +349,10 @@ class Fit(object):
 					plt.subplot(self.n_params, self.n_params,i*self.n_params+j+1)
 					plt.tick_params(labelsize = 15)
 					p.plot_conditional(j, i-1, with_ellipses = False, with_points = False, grid_points=30)
-					plt.errorbar(maximum[j], maximum[i-1], xerr=[[sigmal[j]],[sigmah[j]]], yerr=[[sigmal[i-1]],[sigmah[i-1]]], fmt='o', ecolor='r', capthick=2, color='r')
+					plt.errorbar(maximum[j], maximum[i-1], xerr=[[sigmal[j]],[sigmah[j]]], yerr=[[sigmal[i-1]],[sigmah[i-1]]],
+					             xlolims=lolims[j],xuplims=uplims[j],uplims=uplims[i-1],lolims=lolims[i-1],
+					             markersize=10,elinewidth = 3,
+					             fmt='o', ecolor='r', capthick=5, color='r')
 					if(j == i):
 						plt.xlabel(self.parameters[j],size = 30)
 						plt.ylabel(self.parameters[i-1],size = 30)
@@ -236,11 +361,14 @@ class Spectrum(object):
 	'''
 	
 	'''
-	def __init__(self,spectrum,spectrum_err,rsp_link,effective_band=None,spectrum_name = 'data',e_add_num = 10):
+	def __init__(self,spectrum,spectrum_err,rsp_link,effective_band=None,
+	             time = None,
+	             spectrum_name = 'data',e_add_num = 20):
 		hl = fits.open(rsp_link)
 		matr = hl[2].data['MATRIX']
 		matr[-1] = np.zeros(128)
 		matr = np.vstack(matr)
+		self.time = time
 		self.matr = matr
 		self.R = np.mat(matr)
 		self.e_add_num = e_add_num
@@ -251,14 +379,14 @@ class Spectrum(object):
 		self.e_max = hl[1].data['E_MAX']
 		
 		self.e_c = np.sqrt(self.e_min*self.e_max)
-		self.spectrum = np.array(spectrum)/(self.e_max-self.e_min)
-		self.spectrum_err = np.array(spectrum_err)/np.sqrt(self.e_max-self.e_min)
+		self.spectrum = np.array(spectrum)#/(self.e_max-self.e_min)
+		self.spectrum_err = np.array(spectrum_err)#/np.sqrt(self.e_max-self.e_min)
 		self.Y = np.mat(self.spectrum)
 		self.Y_E = np.mat(self.spectrum_err)
 		self.effective_band = effective_band
 		if effective_band is not None:
-			e_c1 = np.sqrt(self.e_lo*self.e_hi)
-			index1 = np.where((e_c1>=effective_band[0])&(e_c1<=effective_band[1]))[0]
+			self.e_c1 = np.sqrt(self.e_lo*self.e_hi)
+			index1 = np.where((self.e_c1>=effective_band[0])&(self.e_c1<=effective_band[1]))[0]
 			self.effective_index1 = [index1[0],index1[-1]+1]
 			#self.e_lo = self.e_lo[index1]
 			#self.e_hi = self.e_hi[index1]
@@ -284,8 +412,8 @@ class Spectrum(object):
 		self.Y = np.mat(self.spectrum)
 		self.Y_E = np.mat(self.spectrum_err)
 		if effective_band is not None:
-			e_c1 = np.sqrt(self.e_lo*self.e_hi)
-			index1 = np.where((e_c1>=effective_band[0])&(e_c1<=effective_band[1]))[0]
+			self.e_c1 = np.sqrt(self.e_lo*self.e_hi)
+			index1 = np.where((self.e_c1>=effective_band[0])&(self.e_c1<=effective_band[1]))[0]
 			self.effective_index1 = [index1[0],index1[-1]+1]
 			#self.e_lo = self.e_lo[index1]
 			#self.e_hi = self.e_hi[index1]
