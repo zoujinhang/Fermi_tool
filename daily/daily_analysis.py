@@ -128,6 +128,7 @@ def trig_filrate(trig_data,geometry,detectors):
 		stop_arr = np.concatenate((stop_arr,ni['stop'],ni['good_stop']))
 		deter_name = deter_name + [deteri]*(len(ni['start'])+len(ni['good_start']))
 		bayes = bayes + [0]*len(ni['start']) + [1]*len(ni['good_start'])
+	
 	trig_all = {'start':start_arr,'stop':stop_arr,'detector':deter_name,'bayes':bayes}
 	trig_all = pd.DataFrame(trig_all)
 	trig_all.sort_values(by='start',inplace = True,ignore_index=True)
@@ -249,7 +250,7 @@ def time_overlap(tig_all,n = 3):
 	return pd.DataFrame(c)
 	
 
-def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=10,sigma = 3):
+def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,sigma = 3):
 	'''
 	
 	:param t:
@@ -285,8 +286,8 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=10
 			i_list = get_subsection_index(index_,binsize,distinguish)
 			for i in i_list:
 				lc_ti = lc_t[i]
-				if len(lc_ti) <3:
-					lc_t_list.append([lc_ti.min()-1*binsize,lc_ti.max()+1*binsize])
+				if len(lc_ti) <5:
+					lc_t_list.append([lc_ti.min()-2*binsize,lc_ti.max()+2*binsize])
 				else:
 					lc_t_list.append([lc_ti.min(),lc_ti.max()])
 			#print('lc_t_list',lc_t_list)
@@ -326,11 +327,17 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=10
 				if len(edges)>=4:
 					result = background_correction(lt_t,lt_rate_new,edges,degree = 6)
 					startedges,stopedges = get_bayesian_duration(result,sigma = 3)
-					if startedges.size >0:
-						good_wind_start = good_wind_start+[range_t_min]*startedges.size
-						good_wind_stop = good_wind_stop+[range_t_max]*startedges.size
-						good_start = good_start + list(startedges)
-						good_stop = good_stop + list(stopedges)
+					if startedges.size == stopedges.size:
+						if startedges.size >0:
+							good_wind_start = good_wind_start+[range_t_min]*startedges.size
+							good_wind_stop = good_wind_stop+[range_t_max]*startedges.size
+							good_start = good_start + list(startedges)
+							good_stop = good_stop + list(stopedges)
+						else:
+							wind_start.append(range_t_min)
+							wind_stop.append(range_t_max)
+							start.append(lc_ti[0])
+							stop.append(lc_ti[-1])
 					else:
 						wind_start.append(range_t_min)
 						wind_stop.append(range_t_max)
@@ -359,13 +366,19 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=10
 							                               degree=6)
 							startedges, stopedges = get_bayesian_duration(result,
 							                                              sigma=3)
-							if startedges.size > 0:
-								good_wind_start = good_wind_start + [
-									range_t_min] * startedges.size
-								good_wind_stop = good_wind_stop + [
-									range_t_max] * startedges.size
-								good_start = good_start + list(startedges)
-								good_stop = good_stop + list(stopedges)
+							if startedges.size == stopedges.size:
+								if startedges.size > 0:
+									good_wind_start = good_wind_start + [
+										range_t_min] * startedges.size
+									good_wind_stop = good_wind_stop + [
+										range_t_max] * startedges.size
+									good_start = good_start + list(startedges)
+									good_stop = good_stop + list(stopedges)
+								else:
+									wind_start.append(range_t_min)
+									wind_stop.append(range_t_max)
+									start.append(lc_ti[0])
+									stop.append(lc_ti[-1])
 							else:
 								wind_start.append(range_t_min)
 								wind_stop.append(range_t_max)
