@@ -52,7 +52,7 @@ class Save_track(object):
 			print(savename)
 			print('The shape of threshold_responses is 0.')
 	
-	def save_all_respond(self,sn,savename):
+	def save_all_responses(self,sn,savename):
 		sn_serch_result = self.result[sn]
 		sn_trig = sn_serch_result['trig_all']
 		ls = sn_trig.shape[0]
@@ -127,7 +127,7 @@ class Save_search(object):
 			print(savename)
 			print('The shape of threshold_responses is 0.')
 	
-	def save_all_respond(self,savename):
+	def save_all_responses(self,savename):
 		
 		sn_trig =  self.result['trig_all']
 		ls = sn_trig.shape[0]
