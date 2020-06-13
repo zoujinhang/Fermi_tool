@@ -5,11 +5,12 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
 class Plot_track(object):
+	
 	def __init__(self,result,detector,geometry):
 		'''
 		
 		:param result:
-		:param detector:
+		:param detector: detector name list
 		:param geometry:
 		'''
 		self.result = result
@@ -17,9 +18,9 @@ class Plot_track(object):
 		self.geometry = geometry
 		self.clock = geometry.Time_transition
 		self.t_r_cmap = ListedColormap(['k', '#d3d7d4'])
-		self.t_r_norm = BoundaryNorm([0, 60,181], self.t_r_cmap.N)
+		self.t_r_norm = BoundaryNorm([0, self.geometry.radius,181], self.t_r_cmap.N)
 		self.t_b_cmap = ListedColormap(['#f47920', '#ffce7b'])
-		self.t_b_norm = BoundaryNorm([0, 60,181], self.t_b_cmap.N)
+		self.t_b_norm = BoundaryNorm([0, self.geometry.radius,181], self.t_b_cmap.N)
 		
 		
 	def plot_one_source(self,sn,positions,axs):
@@ -109,8 +110,9 @@ class Plot_track(object):
 			axs[ind*2].set_xlim(0,t_max-t_min)
 			axs[ind*2].set_ylim(0,lc_ratemax/0.8)
 			axs[ind*2].set_ylabel('Count rate')
-			axs[ind*2].legend()
+			axs[ind*2].legend(loc = 'upper left')
 			axs[ind*2+1].set_xlim(0,t_max-t_min)
+			axs[ind*2+1].set_ylim(0,180)
 			axs[ind*2+1].set_ylabel('Separation degree')
 			axs[ind*2+1].set_xlabel('Start at ' + str(utc_start)+' (s)')
 			#axs[ind*2+1].legend()
@@ -143,6 +145,7 @@ class Plot_track(object):
 		start = det_trig_all['start'].values
 		stop  = det_trig_all['stop'].values
 		bayes = det_trig_all['bayes'].values
+		
 		for i in range(len(start)):
 			if bayes[i] == 0:
 				axs[0].axvline(x=start[i] - t_min, color='#4f5555', alpha=0.2)
@@ -166,9 +169,12 @@ class Plot_track(object):
 		
 		axs[0].plot(0,0,color = 'k',label = detector+' lightcurve')
 		axs[0].plot(0,0,color = '#f47920',label = 'background')
-		
+		lc_ratemax = 0
 		for indx,lc in enumerate(lc_list):
 			lc_t,lc_rate = lc
+			lcr_max = lc_rate.max()
+			if lcr_max>lc_ratemax:
+				lc_ratemax = lcr_max
 			lc_bs = lc_bs_list[indx]
 			lc_tc = 0.5 * (lc_t[:-1] + lc_t[1:])
 			
@@ -194,12 +200,13 @@ class Plot_track(object):
 			axs[1].plot(lc_tc - t_min, seq, color='k')
 		axs[0].set_xticks([])
 		axs[0].set_xlim(0,t_max-t_min)
+		axs[0].set_ylim(0,lc_ratemax/0.8)
 		axs[0].set_ylabel('Count rate')
-		axs[0].legend()
+		axs[0].legend(loc = 'upper left')
 		axs[1].set_xlim(0,t_max-t_min)
+		axs[1].set_ylim(0,180)
 		axs[1].set_ylabel('Separation degree')
 		axs[1].set_xlabel('Start at ' + str(utc_start)+' (s)')
-		axs[1].legend()
 
 
 
