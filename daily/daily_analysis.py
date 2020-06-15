@@ -120,16 +120,20 @@ def trig_filrate(trig_data,geometry,detectors):
 	angle_overlap_ = geometry.detectors.get_angle_overlap()
 	start_arr = np.array([])
 	stop_arr = np.array([])
+	wind_star = np.array([])
+	wind_stop = np.array([])
 	deter_name = []
 	bayes = []
 	for deteri in detectors:
 		ni = trig_data[deteri]
 		start_arr = np.concatenate((start_arr,ni['start'],ni['good_start']))
 		stop_arr = np.concatenate((stop_arr,ni['stop'],ni['good_stop']))
+		wind_star = np.concatenate((wind_star,ni['wind_start'],ni['good_wind_start']))
+		wind_stop = np.concatenate((wind_stop,ni['wind_stop'],ni['good_wind_stop']))
 		deter_name = deter_name + [deteri]*(len(ni['start'])+len(ni['good_start']))
 		bayes = bayes + [0]*len(ni['start']) + [1]*len(ni['good_start'])
 	
-	trig_all = {'start':start_arr,'stop':stop_arr,'detector':deter_name,'bayes':bayes}
+	trig_all = {'start':start_arr,'stop':stop_arr,'wind_start':wind_star,'wind_stop':wind_stop,'detector':deter_name,'bayes':bayes}
 	trig_all = pd.DataFrame(trig_all)
 	trig_all.sort_values(by='start',inplace = True,ignore_index=True)
 	#print(tirg_all)
@@ -156,6 +160,8 @@ def angle_overlap(tig_all,angle_overlap,n = 3):
 	new_name_list = []
 	new_start = []
 	new_stop = []
+	new_wind_start = []
+	new_wind_stop = []
 	new_overlap = []
 	for i in range(tig_all.shape[0]):
 		t_i = tig_all.iloc[i]
@@ -184,9 +190,13 @@ def angle_overlap(tig_all,angle_overlap,n = 3):
 			new_name_list = new_name_list+ni_union_set
 			new_start = new_start + [t_i['start']]*num
 			new_stop = new_stop + [t_i['stop']]*num
+			new_wind_start = new_wind_start + [t_i['wind_start']]*num
+			new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
 			new_overlap = new_overlap + [ni_union_set]*num
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
+	     'wind_start':np.array(new_wind_start),
+	     'wind_stop':np.array(new_wind_stop),
 	     'detector':new_name_list,
 	     'overlap':new_overlap}
 	return pd.DataFrame(c)
@@ -201,6 +211,8 @@ def time_overlap(tig_all,n = 3):
 	new_start = []
 	new_stop = []
 	new_name = []
+	new_wind_start = []
+	new_wind_stop = []
 	ni_list = []
 	t_over_list = []
 	for i in range(tig_all.shape[0]):
@@ -208,6 +220,7 @@ def time_overlap(tig_all,n = 3):
 		ni = t_i['detector']
 		start = t_i['start']
 		stop = t_i['stop']
+	
 		if i == 0 :
 			t_over_list.append([start,stop])
 			ni_list.append(ni)
@@ -225,8 +238,17 @@ def time_overlap(tig_all,n = 3):
 			elif trun_n == 0:
 				if len(t_over_list) >= n:
 					t_over_array = np.array(t_over_list)
-					new_start.append(t_over_array.min())
-					new_stop.append(t_over_array.max())
+					t_max = t_over_array.max()
+					t_min = t_over_array.min()
+					t_during = t_max - t_min
+					wind_during_harf = 0.5*t_during/0.62
+					if wind_during_harf<2.5:
+						wind_during_harf=2.5
+					t_center = 0.5*(t_min+t_max)
+					new_start.append(t_min)
+					new_stop.append(t_max)
+					new_wind_start.append(t_center-wind_during_harf)
+					new_wind_stop.append(t_center+wind_during_harf)
 					new_name.append(list(set(ni_list)))
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
@@ -236,8 +258,17 @@ def time_overlap(tig_all,n = 3):
 			else:
 				if len(t_over_list) >= n:
 					t_over_array = np.array(t_over_list)
-					new_start.append(t_over_array.min())
-					new_stop.append(t_over_array.max())
+					t_max = t_over_array.max()
+					t_min = t_over_array.min()
+					t_during = t_max - t_min
+					wind_during_harf = 0.5 * t_during / 0.62
+					if wind_during_harf < 2.5:
+						wind_during_harf = 2.5
+					t_center = 0.5 * (t_min + t_max)
+					new_start.append(t_min)
+					new_stop.append(t_max)
+					new_wind_start.append(t_center - wind_during_harf)
+					new_wind_stop.append(t_center + wind_during_harf)
 					new_name.append(list(set(ni_list)))
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
@@ -246,6 +277,8 @@ def time_overlap(tig_all,n = 3):
 					ni_list = [ni]
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
+	     'wind_start':np.array(new_wind_start),
+	     'wind_stop':np.array(new_wind_stop),
 	     'ni_list':new_name}
 	return pd.DataFrame(c)
 	
@@ -410,7 +443,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 	
 	
 		
-def get_subsection_index(index,binsize,distinguish=10):
+def get_subsection_index(index,binsize,distinguish=3):
 	'''
 	
 	:param index:

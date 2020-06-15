@@ -16,13 +16,21 @@ class Save_track(object):
 			sn_trig = sn_trig_0.drop_duplicates('start','first',inplace=False,ignore_index=True)
 			start_met = sn_trig['start'].values
 			stop_met = sn_trig['stop'].values
+			wind_start_met = sn_trig['wind_start'].values
+			wind_stop_met = sn_trig['wind_stop'].values
 			start_utc = self.clock.batch_met_to_utc(start_met).fits
 			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
 			overlap = sn_trig['overlap'].values
 			c = {'start_utc':start_utc,
 			     'stop_utc':stop_utc,
+			     'wind_start_utc':wind_start_utc,
+			     'wind_stop_utc':wind_stop_utc,
 			     'start_met':start_met,
 			     'stop_met':stop_met,
+			     'wind_start_met':wind_start_met,
+			     'wind_stop_met':wind_stop_met,
 			     'overlap':overlap}
 			hl = pd.DataFrame(c)
 			hl.to_csv(savename, index=False)

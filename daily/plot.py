@@ -22,6 +22,122 @@ class Plot_track(object):
 		self.t_b_cmap = ListedColormap(['#f47920', '#ffce7b'])
 		self.t_b_norm = BoundaryNorm([0, self.geometry.radius,181], self.t_b_cmap.N)
 		
+	def get_bayesian_responses_size(self,sn):
+		sn_serch_result = self.result[sn]
+		sn_trig_1 = sn_serch_result['trig_1'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		return sn_trig_1.shape[0]
+		
+	def plot_bayesian_responses(self,sn,index):
+		
+		tirg_data = self.result['lc']
+		sn_serch_result = self.result[sn]
+		sn_trig_1 = sn_serch_result['trig_1'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		t_i = sn_trig_1.iloc[index]
+		overlap = t_i['overlap']
+		n = len(overlap)
+		for i in range(n):
+			n0_c = tirg_data[overlap[i]]
+			lc_list = n0_c['lc']
+			lc_bs_list = n0_c['lc_bs']
+			plt.subplot(n,1,i+1)
+			plt.plot(0,0,color = 'k',label = overlap[i]+' lightcurve')
+			plt.plot(0,0,color = '#f47920',label = 'background')
+			for indx,lc in enumerate(lc_list):
+				lc_t,lc_rate = lc
+				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
+				if len(index1)>2:
+					lc_bs = lc_bs_list[indx]
+					lc_t1 = lc_t[index1]
+					lc_rate1 = lc_rate[index1]
+					lc_bs1 = lc_bs[index1]
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
+			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+			plt.ylabel('count rate')
+			plt.legend(loc = 'upper left')
+		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+		plt.xlabel('Start at ' + str(utc_start)+' (s)')
+	
+	def get_threshold_responses_size(self,sn):
+		sn_serch_result = self.result[sn]
+		sn_trig_0 = sn_serch_result['trig_0'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		return sn_trig_0.shape[0]
+		
+	def plot_threshold_responses(self,sn,index):
+		
+		tirg_data = self.result['lc']
+		sn_serch_result = self.result[sn]
+		sn_trig_0 = sn_serch_result['trig_0'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		t_i = sn_trig_0.iloc[index]
+		overlap = t_i['overlap']
+		n = len(overlap)
+		for i in range(n):
+			n0_c = tirg_data[overlap[i]]
+			lc_list = n0_c['lc']
+			lc_bs_list = n0_c['lc_bs']
+			plt.subplot(n,1,i+1)
+			plt.plot(0,0,color = 'k',label = overlap[i]+' lightcurve')
+			plt.plot(0,0,color = '#f47920',label = 'background')
+			for indx,lc in enumerate(lc_list):
+				lc_t,lc_rate = lc
+				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
+				if len(index1)>2:
+					lc_bs = lc_bs_list[indx]
+					lc_t1 = lc_t[index1]
+					lc_rate1 = lc_rate[index1]
+					lc_bs1 = lc_bs[index1]
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
+			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+			plt.ylabel('count rate')
+			plt.legend(loc = 'upper left')
+		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+		plt.xlabel('Start at ' + str(utc_start)+' (s)')
+	
+	def get_all_responses_size(self,sn):
+		sn_serch_result = self.result[sn]
+		sn_trig_0 = sn_serch_result['trig_all']
+		return sn_trig_0.shape[0]
+	
+	def plot_all_responses(self,sn,index):
+		
+		tirg_data = self.result['lc']
+		sn_serch_result = self.result[sn]
+		sn_trig_0 = sn_serch_result['trig_all']
+		t_i = sn_trig_0.iloc[index]
+		detector= t_i['detector']
+		n0_c = tirg_data[detector]
+		lc_list = n0_c['lc']
+		lc_bs_list = n0_c['lc_bs']
+		plt.subplot(1,1,1)
+		plt.plot(0,0,color = 'k',label = detector+' lightcurve')
+		plt.plot(0,0,color = '#f47920',label = 'background')
+		for indx,lc in enumerate(lc_list):
+			lc_t,lc_rate = lc
+			index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
+			if len(index1)>2:
+				lc_bs = lc_bs_list[indx]
+				lc_t1 = lc_t[index1]
+				lc_rate1 = lc_rate[index1]
+				lc_bs1 = lc_bs[index1]
+				plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+				plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+		if t_i['bayes'] == 0:
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
+		else:
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
+		plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+		plt.ylabel('count rate')
+		plt.legend(loc = 'upper left')
+		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+		plt.xlabel('Start at ' + str(utc_start)+' (s)')
+	
 		
 	def plot_one_source(self,sn,positions,axs):
 		'''
