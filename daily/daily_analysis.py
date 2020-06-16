@@ -109,7 +109,7 @@ def search_candidates(data,detectors,geometry):
 		t = ni['TIME'].values
 		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 10,sigma = 3)
 		trig_data[deteri] = ni_c
-		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs']}
+		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
 	c['lc'] = lc
 	return c
@@ -304,6 +304,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 	start = []
 	stop = []
 	lc_bs_list = []
+	sigma_list = []
 	for lc in lc_list:
 		lc_t,lc_rate = lc
 		lc_t,lc_cs,lc_bs = TD_baseline(lc_t,lc_rate)
@@ -312,6 +313,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 		myfilter = list(map(operator.not_, mask))
 		lc_median_part = lc_cs[myfilter]
 		loc,scale = stats.norm.fit(lc_median_part)
+		sigma_list.append(scale)
 		index_ = np.where(lc_cs>loc+sigma*scale)[0]
 		if len(index_)>0:
 			lc_t_list = []
@@ -430,6 +432,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 	c = {
 		'lc':lc_list,
 		'lc_bs':lc_bs_list,
+		'sigma':sigma_list,
 		'good_wind_start':np.array(good_wind_start),
 		'good_wind_stop':np.array(good_wind_stop),
 		'good_start':np.array(good_start),

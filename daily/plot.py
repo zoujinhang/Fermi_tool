@@ -39,9 +39,10 @@ class Plot_track(object):
 			n0_c = tirg_data[overlap[i]]
 			lc_list = n0_c['lc']
 			lc_bs_list = n0_c['lc_bs']
+			sigma = n0_c['sigma']
 			plt.subplot(n,1,i+1)
-			plt.plot(0,0,color = 'k',label = overlap[i]+' lightcurve')
-			plt.plot(0,0,color = '#f47920',label = 'background')
+			plt.plot(0,0,color = 'k',label = overlap[i])
+			#plt.plot(0,0,color = '#f47920',label = 'background')
 			for indx,lc in enumerate(lc_list):
 				lc_t,lc_rate = lc
 				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
@@ -50,12 +51,13 @@ class Plot_track(object):
 					lc_t1 = lc_t[index1]
 					lc_rate1 = lc_rate[index1]
 					lc_bs1 = lc_bs[index1]
-					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
-					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1-lc_bs1-3*sigma[indx],color = 'k')
+					#plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
 			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
-			plt.ylabel('count rate')
+			plt.ylim(0,)
+			plt.ylabel('excess count rate')
 			plt.legend(loc = 'upper left')
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')
@@ -77,9 +79,10 @@ class Plot_track(object):
 			n0_c = tirg_data[overlap[i]]
 			lc_list = n0_c['lc']
 			lc_bs_list = n0_c['lc_bs']
+			sigma = n0_c['sigma']
 			plt.subplot(n,1,i+1)
-			plt.plot(0,0,color = 'k',label = overlap[i]+' lightcurve')
-			plt.plot(0,0,color = '#f47920',label = 'background')
+			plt.plot(0,0,color = 'k',label = overlap[i])
+			#plt.plot(0,0,color = '#f47920',label = 'background')
 			for indx,lc in enumerate(lc_list):
 				lc_t,lc_rate = lc
 				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
@@ -88,12 +91,13 @@ class Plot_track(object):
 					lc_t1 = lc_t[index1]
 					lc_rate1 = lc_rate[index1]
 					lc_bs1 = lc_bs[index1]
-					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
-					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1-lc_bs1-3*sigma[indx],color = 'k')
+					#plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
 			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
-			plt.ylabel('count rate')
+			plt.ylim(0,)
+			plt.ylabel('excess count rate')
 			plt.legend(loc = 'upper left')
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')
@@ -113,9 +117,10 @@ class Plot_track(object):
 		n0_c = tirg_data[detector]
 		lc_list = n0_c['lc']
 		lc_bs_list = n0_c['lc_bs']
+		sigma = n0_c['sigma']
 		plt.subplot(1,1,1)
-		plt.plot(0,0,color = 'k',label = detector+' lightcurve')
-		plt.plot(0,0,color = '#f47920',label = 'background')
+		plt.plot(0,0,color = 'k',label = detector)
+		#plt.plot(0,0,color = '#f47920',label = 'background')
 		for indx,lc in enumerate(lc_list):
 			lc_t,lc_rate = lc
 			index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
@@ -124,8 +129,8 @@ class Plot_track(object):
 				lc_t1 = lc_t[index1]
 				lc_rate1 = lc_rate[index1]
 				lc_bs1 = lc_bs[index1]
-				plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
-				plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+				plt.plot(lc_t1-t_i['wind_start'],lc_rate1-lc_bs1-3*sigma[indx],color = 'k')
+				#plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
 		if t_i['bayes'] == 0:
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
@@ -133,7 +138,8 @@ class Plot_track(object):
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
 		plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
-		plt.ylabel('count rate')
+		plt.ylim(0,)
+		plt.ylabel('excess count rate')
 		plt.legend(loc = 'upper left')
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')
