@@ -43,6 +43,8 @@ class Plot_track(object):
 			plt.subplot(n,1,i+1)
 			plt.plot(0,0,color = 'k',label = overlap[i])
 			#plt.plot(0,0,color = '#f47920',label = 'background')
+			min_ = 100000
+			max_ = 0
 			for indx,lc in enumerate(lc_list):
 				lc_t,lc_rate = lc
 				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
@@ -50,15 +52,24 @@ class Plot_track(object):
 					lc_bs = lc_bs_list[indx]
 					lc_t1 = lc_t[index1]
 					lc_rate1 = lc_rate[index1]
+					if lc_rate1.min()<min_:
+						min_ = lc_rate1.min()
+					if lc_rate1.max()>max_:
+						max_ = lc_rate1.max()
 					lc_bs1 = lc_bs[index1]
-					plt.plot(lc_t1-t_i['wind_start'],lc_rate1-lc_bs1-3*sigma[indx],color = 'k')
-					#plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
 			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
-			plt.ylim(0,)
+			mean_ = 0.5*(max_+min_)
+			high_harf =0.5*(max_-min_)/0.9
+			plt.ylim(mean_-high_harf,mean_+high_harf)
 			plt.ylabel('excess count rate')
 			plt.legend(loc = 'upper left')
+			if i != n-1:
+				plt.xticks([])
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')
 	
@@ -83,6 +94,8 @@ class Plot_track(object):
 			plt.subplot(n,1,i+1)
 			plt.plot(0,0,color = 'k',label = overlap[i])
 			#plt.plot(0,0,color = '#f47920',label = 'background')
+			min_ = 100000
+			max_ = 0
 			for indx,lc in enumerate(lc_list):
 				lc_t,lc_rate = lc
 				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
@@ -90,15 +103,24 @@ class Plot_track(object):
 					lc_bs = lc_bs_list[indx]
 					lc_t1 = lc_t[index1]
 					lc_rate1 = lc_rate[index1]
+					if lc_rate1.min()<min_:
+						min_ = lc_rate1.min()
+					if lc_rate1.max()>max_:
+						max_ = lc_rate1.max()
 					lc_bs1 = lc_bs[index1]
-					plt.plot(lc_t1-t_i['wind_start'],lc_rate1-lc_bs1-3*sigma[indx],color = 'k')
-					#plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
 			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
-			plt.ylim(0,)
-			plt.ylabel('excess count rate')
+			mean_ = 0.5*(max_+min_)
+			high_harf =0.5*(max_-min_)/0.9
+			plt.ylim(mean_-high_harf,mean_+high_harf)
+			plt.ylabel('Count rate')
 			plt.legend(loc = 'upper left')
+			if i != n-1:
+				plt.xticks([])
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')
 	
@@ -121,6 +143,8 @@ class Plot_track(object):
 		plt.subplot(1,1,1)
 		plt.plot(0,0,color = 'k',label = detector)
 		#plt.plot(0,0,color = '#f47920',label = 'background')
+		min_ = 100000
+		max_ = 0
 		for indx,lc in enumerate(lc_list):
 			lc_t,lc_rate = lc
 			index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
@@ -128,9 +152,14 @@ class Plot_track(object):
 				lc_bs = lc_bs_list[indx]
 				lc_t1 = lc_t[index1]
 				lc_rate1 = lc_rate[index1]
+				if lc_rate1.min()<min_:
+					min_ = lc_rate1.min()
+				if lc_rate1.max()>max_:
+					max_ = lc_rate1.max()
 				lc_bs1 = lc_bs[index1]
-				plt.plot(lc_t1-t_i['wind_start'],lc_rate1-lc_bs1-3*sigma[indx],color = 'k')
-				#plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#f47920')
+				plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+				plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+				plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
 		if t_i['bayes'] == 0:
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
@@ -138,7 +167,9 @@ class Plot_track(object):
 			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
 			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
 		plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
-		plt.ylim(0,)
+		mean_ = 0.5*(max_+min_)
+		high_harf = 0.5*(max_-min_)/0.9
+		plt.ylim(mean_-high_harf,mean_+high_harf)
 		plt.ylabel('excess count rate')
 		plt.legend(loc = 'upper left')
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits

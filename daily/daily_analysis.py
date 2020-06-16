@@ -107,7 +107,7 @@ def search_candidates(data,detectors,geometry):
 	for deteri in detectors:
 		ni = data[deteri]['events']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 10,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 1.5,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -283,7 +283,7 @@ def time_overlap(tig_all,n = 3):
 	return pd.DataFrame(c)
 	
 
-def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,sigma = 3):
+def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.1,sigma = 3):
 	'''
 	
 	:param t:
@@ -294,6 +294,8 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 	:param sigma:
 	:return:
 	'''
+	
+	
 	lc_list,t_index_list = get_light_curve_list(t,binsize = binsize,wt = wt)
 	good_wind_start = []
 	good_wind_stop = []
@@ -321,7 +323,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 			i_list = get_subsection_index(index_,binsize,distinguish)
 			for i in i_list:
 				lc_ti = lc_t[i]
-				if len(lc_ti) <5:
+				if len(lc_ti) < 5:
 					lc_t_list.append([lc_ti.min()-2*binsize,lc_ti.max()+2*binsize])
 				else:
 					lc_t_list.append([lc_ti.min(),lc_ti.max()])
@@ -446,7 +448,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=3,
 	
 	
 		
-def get_subsection_index(index,binsize,distinguish=3):
+def get_subsection_index(index,binsize,distinguish=1.1):
 	'''
 	
 	:param index:
@@ -454,6 +456,7 @@ def get_subsection_index(index,binsize,distinguish=3):
 	:param distinguish:
 	:return:
 	'''
+	
 	if len(index) == 1:
 		return [index]
 	else:
@@ -462,7 +465,7 @@ def get_subsection_index(index,binsize,distinguish=3):
 		d_index = index[1:]-index[:-1]
 		d_index = np.concatenate(([0],d_index))
 		for id,value in enumerate(d_index):
-			if value*binsize <= distinguish:
+			if value*binsize < distinguish:
 				index_one.append(index[id])
 			else:
 				index_list.append(np.array(index_one))
