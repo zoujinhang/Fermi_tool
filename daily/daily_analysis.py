@@ -107,7 +107,7 @@ def search_candidates(data,detectors,geometry):
 	for deteri in detectors:
 		ni = data[deteri]['events']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 1.5,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 1.1,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -232,9 +232,9 @@ def time_overlap(tig_all,n = 3):
 			if len(t_over_list) == trun_n:
 				t_over_list.append([start,stop])
 				ni_list.append(ni)
-			elif trun_n>=2:
-				t_over_list.append([start,stop])
-				ni_list.append(ni)
+			#elif trun_n>=3:
+			#	t_over_list.append([start,stop])
+			#	ni_list.append(ni)
 			elif trun_n == 0:
 				if len(t_over_list) >= n:
 					t_over_array = np.array(t_over_list)
