@@ -4,6 +4,160 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+
+class Plot_serch(object):
+	
+	def __init__(self,result,detector,geometry):
+		
+		self.result = result
+		self.detector = detector
+		self.geometry = geometry
+		self.clock = geometry.Time_transition
+
+	def get_bayesian_responses_size(self):
+		trig_1 = self.result['trig_1'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		return trig_1.shape[0]
+	def plot_bayesian_responses(self,index):
+		
+		lc_c = self.result['lc']
+		trig_1 = self.result['trig_1'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		t_i = trig_1.iloc[index]
+		overlap = t_i['overlap']
+		n = len(overlap)
+		plt.figure(constrained_layout=True,figsize=(10,4*n))
+		for i in range(n):
+			ni = lc_c[overlap[i]]
+			lc_list = ni['lc']
+			lc_bs_list = ni['lc_bs']
+			sigma = ni['sigma']
+			plt.subplot(n,1,i+1)
+			plt.plot(0,0,color = 'k',label = overlap[i])
+			min_ = 100000
+			max_ = 0
+			for indx,lc in enumerate(lc_list):
+				lc_t,lc_rate = lc
+				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
+				if len(index1)>2:
+					lc_bs = lc_bs_list[indx]
+					lc_t1 = lc_t[index1]
+					lc_rate1 = lc_rate[index1]
+					if lc_rate1.min()<min_:
+						min_ = lc_rate1.min()
+					if lc_rate1.max()>max_:
+						max_ = lc_rate1.max()
+					lc_bs1 = lc_bs[index1]
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
+			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+			mean_ = 0.5*(max_+min_)
+			high_harf =0.5*(max_-min_)/0.9
+			plt.ylim(mean_-high_harf,mean_+high_harf)
+			plt.ylabel('Count rate')
+			plt.legend(loc = 'upper left')
+			if i != n-1:
+				plt.xticks([])
+		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+		plt.xlabel('Start at ' + str(utc_start)+' (s)')
+	
+	def get_threshold_responses_size(self):
+		trig_0 = self.result['trig_0'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		return trig_0.shape[0]
+	
+	def plot_threshold_responses(self,index):
+		lc_c = self.result['lc']
+		trig_0 = self.result['trig_0'].drop_duplicates('start','first',inplace=False,ignore_index=True)
+		t_i = trig_0.iloc[index]
+		overlap = t_i['overlap']
+		n = len(overlap)
+		plt.figure(constrained_layout=True,figsize=(10,4*n))
+		for i in range(n):
+			ni = lc_c[overlap[i]]
+			lc_list = ni['lc']
+			lc_bs_list = ni['lc_bs']
+			sigma = ni['sigma']
+			plt.subplot(n,1,i+1)
+			plt.plot(0,0,color = 'k',label = overlap[i])
+			min_ = 100000
+			max_ = 0
+			for indx,lc in enumerate(lc_list):
+				lc_t,lc_rate = lc
+				index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
+				if len(index1)>2:
+					lc_bs = lc_bs_list[indx]
+					lc_t1 = lc_t[index1]
+					lc_rate1 = lc_rate[index1]
+					if lc_rate1.min()<min_:
+						min_ = lc_rate1.min()
+					if lc_rate1.max()>max_:
+						max_ = lc_rate1.max()
+					lc_bs1 = lc_bs[index1]
+					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+					plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
+			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+			mean_ = 0.5*(max_+min_)
+			high_harf =0.5*(max_-min_)/0.9
+			plt.ylim(mean_-high_harf,mean_+high_harf)
+			plt.ylabel('Count rate')
+			plt.legend(loc = 'upper left')
+			if i != n-1:
+				plt.xticks([])
+		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+		plt.xlabel('Start at ' + str(utc_start)+' (s)')
+	
+	def get_all_responses_size(self):
+		return self.result['trig_all'].shape[0]
+	def plot_all_responses(self,index):
+		lc_c = self.result['lc']
+		trig_all = self.result['trig_all']
+		t_i = trig_all.iloc[index]
+		detector= t_i['detector']
+		ni = lc_c[detector]
+		lc_list = ni['lc']
+		lc_bs_list = ni['lc_bs']
+		sigma = ni['sigma']
+		plt.figure(constrained_layout=True)
+		plt.subplot(1,1,1)
+		plt.plot(0,0,color = 'k',label = detector)
+		min_ = 100000
+		max_ = 0
+		for indx,lc in enumerate(lc_list):
+			lc_t,lc_rate = lc
+			index1 = np.where((lc_t>=t_i['wind_start'])&(lc_t<=t_i['wind_stop']))[0]
+			if len(index1)>2:
+				lc_bs = lc_bs_list[indx]
+				lc_t1 = lc_t[index1]
+				lc_rate1 = lc_rate[index1]
+				if lc_rate1.min()<min_:
+					min_ = lc_rate1.min()
+				if lc_rate1.max()>max_:
+					max_ = lc_rate1.max()
+				lc_bs1 = lc_bs[index1]
+				plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+				plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+				plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
+		if t_i['bayes'] == 0:
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
+		else:
+			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
+			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
+		plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+		mean_ = 0.5*(max_+min_)
+		high_harf = 0.5*(max_-min_)/0.9
+		plt.ylim(mean_-high_harf,mean_+high_harf)
+		plt.ylabel('Count rate')
+		plt.legend(loc = 'upper left')
+		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+		plt.xlabel('Start at ' + str(utc_start)+' (s)')
+		
+		
+	
 class Plot_track(object):
 	
 	def __init__(self,result,detector,geometry):
@@ -35,6 +189,7 @@ class Plot_track(object):
 		t_i = sn_trig_1.iloc[index]
 		overlap = t_i['overlap']
 		n = len(overlap)
+		plt.figure(constrained_layout=True,figsize=(10,4*n))
 		for i in range(n):
 			n0_c = tirg_data[overlap[i]]
 			lc_list = n0_c['lc']
@@ -66,7 +221,7 @@ class Plot_track(object):
 			mean_ = 0.5*(max_+min_)
 			high_harf =0.5*(max_-min_)/0.9
 			plt.ylim(mean_-high_harf,mean_+high_harf)
-			plt.ylabel('excess count rate')
+			plt.ylabel('Count rate')
 			plt.legend(loc = 'upper left')
 			if i != n-1:
 				plt.xticks([])
@@ -86,6 +241,7 @@ class Plot_track(object):
 		t_i = sn_trig_0.iloc[index]
 		overlap = t_i['overlap']
 		n = len(overlap)
+		plt.figure(constrained_layout=True,figsize=(10,4*n))
 		for i in range(n):
 			n0_c = tirg_data[overlap[i]]
 			lc_list = n0_c['lc']
@@ -140,6 +296,7 @@ class Plot_track(object):
 		lc_list = n0_c['lc']
 		lc_bs_list = n0_c['lc_bs']
 		sigma = n0_c['sigma']
+		plt.figure(constrained_layout=True)
 		plt.subplot(1,1,1)
 		plt.plot(0,0,color = 'k',label = detector)
 		#plt.plot(0,0,color = '#f47920',label = 'background')
@@ -170,7 +327,7 @@ class Plot_track(object):
 		mean_ = 0.5*(max_+min_)
 		high_harf = 0.5*(max_-min_)/0.9
 		plt.ylim(mean_-high_harf,mean_+high_harf)
-		plt.ylabel('excess count rate')
+		plt.ylabel('Count rate')
 		plt.legend(loc = 'upper left')
 		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')

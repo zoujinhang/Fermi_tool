@@ -69,7 +69,6 @@ def track_one(trig_a,geometry,pos):
 	tool_ = []
 	radius = geometry.radius
 	t = trig_a['start'].values
-	print(trig_a.shape)
 	seq = geometry.get_separation_with_time(t, pos)
 	try:
 		ni_list = trig_a['overlap'].values
@@ -107,7 +106,7 @@ def search_candidates(data,detectors,geometry):
 	for deteri in detectors:
 		ni = data[deteri]['events']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 1.1,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 1.5,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -283,7 +282,7 @@ def time_overlap(tig_all,n = 3):
 	return pd.DataFrame(c)
 	
 
-def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.1,sigma = 3):
+def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.5,sigma = 3):
 	'''
 	
 	:param t:
@@ -360,7 +359,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				#print('lt_t',lt_t)
 				#lt_rate = lc_rate[t_index]
 				lt_rate_new = lc_cs_new[t_index]
-				edges = bayesian_blocks(lt_t,np.round(lt_rate_new*binsize),fitness='events',p0 = 0.05,gamma = np.exp(-5))
+				edges = bayesian_blocks(lt_t,np.round(lt_rate_new*binsize),fitness='events',gamma = np.exp(-4))
 				if len(edges)>=4:
 					result = background_correction(lt_t,lt_rate_new,edges,degree = 6)
 					startedges,stopedges = get_bayesian_duration(result,sigma = 3)
@@ -381,11 +380,17 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 						start.append(lc_ti[0])
 						stop.append(lc_ti[-1])
 				else:
-					if add_t == 10:#Temporary abandonment
+					if lc_dt<=2:#Temporary abandonment
 						print('work in events!')
-						t_index = np.where((t >= range_t_min) & (t <= range_t_max))[0]
+						new_t0 = lc_ti[0]-3
+						if new_t0<range_t_min:
+							new_t0 = range_t_min
+						new_t1 = lc_ti[-1]+3
+						if new_t1 > range_t_max:
+							new_t1 = range_t_max
+						t_index = np.where((t >= new_t0) & (t <= new_t1))[0]
 						t_in = t[t_index]
-						edges = bayesian_blocks(t_in, fitness='events', p0=0.01)
+						edges = bayesian_blocks(t_in, fitness='events', p0=0.05)
 						gg = np.around(edges / binsize_else)
 						gg = np.unique(gg)
 						gg = np.sort(gg)
