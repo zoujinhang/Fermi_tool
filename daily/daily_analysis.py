@@ -88,10 +88,16 @@ def track_one(trig_a,geometry,pos):
 	if seq is not None:
 		for i,ni in enumerate(ni_list):
 			n_ni = len(ni)
-			seqi = seq.iloc[i]
-			seq_values = seqi[ni].values
-			ne = seq_values[seq_values<=radius]
-			tool_.append(len(ne)>0.5*n_ni)
+			if n_ni<=7:
+				seqi = seq.iloc[i]
+				seq_values = seqi[ni].values
+				ne = seq_values[seq_values<=radius]
+				tool_.append(len(ne)>=0.333*n_ni)
+			else:
+				seqi = seq.iloc[i]
+				seq_values = seqi[ni].values
+				ne = seq_values[seq_values<=radius]
+				tool_.append(len(ne)>=1)
 		return pd.Series(tool_,name='start',dtype=bool)
 	else:
 		print('seq is None!')
