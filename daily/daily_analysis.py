@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 from astropy.stats import sigma_clip,mad_std,bayesian_blocks
 import operator
 from Data_analysis.Baseline import TD_baseline
-from Data_analysis.Bayesian_duration import background_correction,get_bayesian_duration
+from Data_analysis.Bayesian_duration import background_correction,get_bayesian_duration,get_SNR
 from scipy import stats
 import pandas as pd
 from astropy.coordinates import SkyCoord
 
 class Sources(object):
-	def __init__(self,positions=None,names=None,frame='icrs',unit = 'deg'):
+	def __init__(self,positions=None,names=None,frame='icrs',unit = 'deg',range_ = 10):
+		self.range = range_
 		if positions is not None:
 			if isinstance(positions,SkyCoord):
 				self.positions = positions
@@ -23,7 +24,10 @@ class Sources(object):
 					self.names = np.arange(len(positions),dtype = int)
 				except (TypeError):
 					self.names = 0
-	def input_with_deg(self,ra,dec,names = None,frame='icrs',unit = 'deg'):
+			
+				
+				
+	def input_with_deg(self,ra,dec,names = None,frame='icrs',unit = 'deg',range_ = 10):
 		self.positions = SkyCoord(ra,dec,frame = frame,unit = unit)
 		if names is not None:
 			self.names = names
@@ -32,6 +36,7 @@ class Sources(object):
 				self.names = np.arange(len(self.positions),dtype = int)
 			except (TypeError):
 				self.names = 0
+		self.range = range_
 
 def track(serch_result,geometry,sources):
 	
@@ -42,29 +47,30 @@ def track(serch_result,geometry,sources):
 	trig_all = serch_result['trig_all']
 	sources_name = sources.names
 	positions = sources.positions
+	range_ = sources.range
 	result ={'lc':serch_result['lc']}
 	try:
 		for i,pos in enumerate(positions):
-			tl0 = track_one(trig_a0,geometry,pos)
+			tl0 = track_one(trig_a0,geometry,pos,range_=range_)
 			
-			tl1 = track_one(trig_a1,geometry,pos)
+			tl1 = track_one(trig_a1,geometry,pos,range_=range_)
 			
-			tl2 = track_one(trig_all,geometry,pos)
+			tl2 = track_one(trig_all,geometry,pos,range_=range_)
 			
 			result[sources_name[i]] = {'trig_0':trig_a0[tl0],
 			                        'trig_1':trig_a1[tl1],
 			                        'trig_all':trig_all[tl2]}
 	except(TypeError):
-		tl0 = track_one(trig_a0,geometry,positions)
-		tl1 = track_one(trig_a1,geometry,positions)
-		tl2 = track_one(trig_all,geometry,positions)
+		tl0 = track_one(trig_a0,geometry,positions,range_=range_)
+		tl1 = track_one(trig_a1,geometry,positions,range_=range_)
+		tl2 = track_one(trig_all,geometry,positions,range_=range_)
 		result[sources_name] = {'trig_0':trig_a0[tl0],
 			                'trig_1':trig_a1[tl1],
 			                'trig_all':trig_all[tl2]}
 				
 	return 	result
 
-def track_one(trig_a,geometry,pos):
+def track_one(trig_a,geometry,pos,range_ = 10):
 	
 	tool_ = []
 	radius = geometry.radius
@@ -78,7 +84,7 @@ def track_one(trig_a,geometry,pos):
 			for i,ni in enumerate(ni_list):
 				seqi = seq.iloc[i]
 				seq_values = seqi[ni]
-				tool_.append(seq_values<=radius)
+				tool_.append(seq_values<=radius+range_)
 			
 			return pd.Series(tool_,name='start',dtype=bool)
 		else:
@@ -91,13 +97,13 @@ def track_one(trig_a,geometry,pos):
 			if n_ni<=7:
 				seqi = seq.iloc[i]
 				seq_values = seqi[ni].values
-				ne = seq_values[seq_values<=radius]
+				ne = seq_values[seq_values<=radius+range_]
 				tool_.append(len(ne)>=0.333*n_ni)
 			else:
 				seqi = seq.iloc[i]
 				seq_values = seqi[ni].values
-				ne = seq_values[seq_values<=radius]
-				tool_.append(len(ne)>=1)
+				ne = seq_values[seq_values<=radius+range_]
+				tool_.append(len(ne)>=2)
 		return pd.Series(tool_,name='start',dtype=bool)
 	else:
 		print('seq is None!')
@@ -125,6 +131,7 @@ def trig_filrate(trig_data,geometry,detectors):
 	angle_overlap_ = geometry.detectors.get_angle_overlap()
 	start_arr = np.array([])
 	stop_arr = np.array([])
+	SNR_arr = np.array([])
 	wind_star = np.array([])
 	wind_stop = np.array([])
 	deter_name = []
@@ -133,28 +140,29 @@ def trig_filrate(trig_data,geometry,detectors):
 		ni = trig_data[deteri]
 		start_arr = np.concatenate((start_arr,ni['start'],ni['good_start']))
 		stop_arr = np.concatenate((stop_arr,ni['stop'],ni['good_stop']))
+		SNR_arr = np.concatenate((SNR_arr,ni['SNR'],ni['good_SNR']))
 		wind_star = np.concatenate((wind_star,ni['wind_start'],ni['good_wind_start']))
 		wind_stop = np.concatenate((wind_stop,ni['wind_stop'],ni['good_wind_stop']))
 		deter_name = deter_name + [deteri]*(len(ni['start'])+len(ni['good_start']))
 		bayes = bayes + [0]*len(ni['start']) + [1]*len(ni['good_start'])
 	
-	trig_all = {'start':start_arr,'stop':stop_arr,'wind_start':wind_star,'wind_stop':wind_stop,'detector':deter_name,'bayes':bayes}
+	trig_all = {'start':start_arr,'stop':stop_arr,'SNR':SNR_arr,'wind_start':wind_star,'wind_stop':wind_stop,'detector':deter_name,'bayes':bayes}
 	trig_all = pd.DataFrame(trig_all)
 	trig_all.sort_values(by='start',inplace = True,ignore_index=True)
 	#print(tirg_all)
 	index_0  = trig_all['bayes']==0
-	tig_t = time_overlap(trig_all[index_0],n=3)
-	tig_a0 = angle_overlap(tig_t,angle_overlap_,n = 3)
+	tig_t = time_overlap(trig_all[index_0],n=2)
+	tig_a0 = angle_overlap(tig_t,angle_overlap_,n = 2)
 	index_1  = trig_all['bayes']==1
-	tig_t = time_overlap(trig_all[index_1],n=2)
-	tig_a1 = angle_overlap(tig_t,angle_overlap_,n = 2)
+	tig_t = time_overlap(trig_all[index_1],n=1)
+	tig_a1 = angle_overlap(tig_t,angle_overlap_,n = 1)
 	c = {'trig_0':tig_a0,
 	     'trig_1':tig_a1,
 	     'trig_all':trig_all}
 	return c
 	
 	
-def angle_overlap(tig_all,angle_overlap,n = 3):
+def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 	'''
 	
 	:param tig_all:
@@ -171,33 +179,53 @@ def angle_overlap(tig_all,angle_overlap,n = 3):
 	for i in range(tig_all.shape[0]):
 		t_i = tig_all.iloc[i]
 		ni_list = t_i['ni_list']
-		v_ni_list = []
-		for ni in ni_list:
-			over_list = list(angle_overlap[ni])
-			over_list.append(ni)
-			v_ni_list = v_ni_list+over_list
-		ni_n = list(set(v_ni_list))     #Remove duplicates
-		ni_n = np.array(ni_n)
-		ni_nm =[]
-		v_ni_list = np.array(v_ni_list)
-		for ni in ni_n:
-			index_n = np.where(v_ni_list == ni)[0]
-			nn = v_ni_list[index_n].size
-			ni_nm.append(nn)
-		ni_nm = np.array(ni_nm)
-		index_ = np.where(ni_nm>1)[0]
-		ni_n = ni_n[index_]                         #get overlap
-		ni_over_set = set(ni_n)
-		ni_set = set(ni_list)
-		ni_union_set = list(ni_set & ni_over_set)   #get overlap
-		num = len(ni_union_set)
-		if num>n:
-			new_name_list = new_name_list+ni_union_set
-			new_start = new_start + [t_i['start']]*num
-			new_stop = new_stop + [t_i['stop']]*num
-			new_wind_start = new_wind_start + [t_i['wind_start']]*num
-			new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
-			new_overlap = new_overlap + [ni_union_set]*num
+		ni_snr_list = t_i['SNR']
+		if len(ni_list) == 1:
+			if ni_snr_list[0]>=case0:
+				new_name_list = new_name_list+ni_list
+				new_start = new_start + [t_i['start']]
+				new_stop = new_stop + [t_i['stop']]
+				new_wind_start = new_wind_start + [t_i['wind_start']]
+				new_wind_stop = new_wind_stop + [t_i['wind_stop']]
+				new_overlap = new_overlap + [ni_list]
+		else:
+			v_ni_list = []
+			for ni in ni_list:
+				over_list = list(angle_overlap[ni])
+				over_list.append(ni)
+				v_ni_list = v_ni_list+over_list
+			ni_n = list(set(v_ni_list))     #Remove duplicates
+			ni_n = np.array(ni_n)
+			ni_nm =[]
+			v_ni_list = np.array(v_ni_list)
+			for ni in ni_n:
+				index_n = np.where(v_ni_list == ni)[0]
+				nn = v_ni_list[index_n].size
+				ni_nm.append(nn)
+			ni_nm = np.array(ni_nm)
+			index_ = np.where(ni_nm>1)[0]
+			ni_n = ni_n[index_]                         #get overlap
+			ni_over_set = set(ni_n)
+			ni_set = set(ni_list)
+			ni_union_set = list(ni_set & ni_over_set)   #get overlap
+			num = len(ni_union_set)
+			if num>n:
+				new_name_list = new_name_list+ni_union_set
+				new_start = new_start + [t_i['start']]*num
+				new_stop = new_stop + [t_i['stop']]*num
+				new_wind_start = new_wind_start + [t_i['wind_start']]*num
+				new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
+				new_overlap = new_overlap + [ni_union_set]*num
+			else:
+				for jd in range(len(ni_list)):
+					if ni_snr_list[jd]>=case0:
+						new_name_list.append(ni_list[jd])
+						new_start.append(t_i['start'])
+						new_stop.append(t_i['stop'])
+						new_wind_start.append(t_i['wind_start'])
+						new_wind_stop.append(t_i['wind_stop'])
+						new_overlap.append([ni_list[jd]])
+						
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
 	     'wind_start':np.array(new_wind_start),
@@ -206,7 +234,7 @@ def angle_overlap(tig_all,angle_overlap,n = 3):
 	     'overlap':new_overlap}
 	return pd.DataFrame(c)
 		
-def time_overlap(tig_all,n = 3):
+def time_overlap(tig_all,n = 3,case0 = 5):
 	'''
 	
 	:param tig_all:
@@ -215,20 +243,23 @@ def time_overlap(tig_all,n = 3):
 	'''
 	new_start = []
 	new_stop = []
+	new_snr = []
 	new_name = []
 	new_wind_start = []
 	new_wind_stop = []
 	ni_list = []
 	t_over_list = []
+	snr_list = []
 	for i in range(tig_all.shape[0]):
 		t_i = tig_all.iloc[i]
 		ni = t_i['detector']
 		start = t_i['start']
 		stop = t_i['stop']
-	
+		snr = t_i['SNR']
 		if i == 0 :
 			t_over_list.append([start,stop])
 			ni_list.append(ni)
+			snr_list.append(snr)
 		else:
 			trun_n = 0
 			for start0,stop0 in t_over_list:
@@ -237,11 +268,13 @@ def time_overlap(tig_all,n = 3):
 			if len(t_over_list) == trun_n:
 				t_over_list.append([start,stop])
 				ni_list.append(ni)
+				snr_list.append(snr)
 			#elif trun_n>=3:
 			#	t_over_list.append([start,stop])
 			#	ni_list.append(ni)
 			elif trun_n == 0:
-				if len(t_over_list) >= n:
+				snr_arr = np.array(snr_list)
+				if (len(t_over_list) >= n)or(snr_arr[snr_arr>case0].size>0):
 					t_over_array = np.array(t_over_list)
 					t_max = t_over_array.max()
 					t_min = t_over_array.min()
@@ -254,14 +287,19 @@ def time_overlap(tig_all,n = 3):
 					new_stop.append(t_max)
 					new_wind_start.append(t_center-wind_during_harf)
 					new_wind_stop.append(t_center+wind_during_harf)
-					new_name.append(list(set(ni_list)))
+					ni_ar ,ni_inde = np.unique(np.array(ni_list),return_index=True)
+					new_name.append(list(ni_ar))
+					new_snr.append(list(np.array(snr_list)[ni_inde]))
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
+					snr_list = [snr]
 				else:
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
+					snr_list = [snr]
 			else:
-				if len(t_over_list) >= n:
+				snr_arr = np.array(snr_list)
+				if (len(t_over_list) >= n)or(snr_arr[snr_arr>case0].size>0):
 					t_over_array = np.array(t_over_list)
 					t_max = t_over_array.max()
 					t_min = t_over_array.min()
@@ -274,16 +312,21 @@ def time_overlap(tig_all,n = 3):
 					new_stop.append(t_max)
 					new_wind_start.append(t_center - wind_during_harf)
 					new_wind_stop.append(t_center + wind_during_harf)
-					new_name.append(list(set(ni_list)))
+					ni_ar, ni_inde = np.unique(np.array(ni_list), return_index=True)
+					new_name.append(list(ni_ar))
+					new_snr.append(list(np.array(snr_list)[ni_inde]))
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
+					snr_list = [snr]
 				else:
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
+					snr_list = [snr]
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
 	     'wind_start':np.array(new_wind_start),
 	     'wind_stop':np.array(new_wind_stop),
+	     'SNR': new_snr,
 	     'ni_list':new_name}
 	return pd.DataFrame(c)
 	
@@ -305,11 +348,13 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 	good_wind_start = []
 	good_wind_stop = []
 	good_start = []
+	good_SNR = []
 	good_stop = []
 	wind_start = []
 	wind_stop = []
 	start = []
 	stop = []
+	SNR = []
 	lc_bs_list = []
 	sigma_list = []
 	for lc in lc_list:
@@ -324,17 +369,22 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 		index_ = np.where(lc_cs>loc+sigma*scale)[0]
 		if len(index_)>0:
 			lc_t_list = []
+			lc_snr_list = []
 			lc_cs_new = lc_cs + lc_bs.mean()
 			i_list = get_subsection_index(index_,binsize,distinguish)
 			for i in i_list:
 				lc_ti = lc_t[i]
+				lc_csi = lc_cs[i]
+				m_SNR = (lc_csi.max()-loc)/scale
 				if len(lc_ti) < 5:
 					lc_t_list.append([lc_ti.min()-2*binsize,lc_ti.max()+2*binsize])
 				else:
 					lc_t_list.append([lc_ti.min(),lc_ti.max()])
+				lc_snr_list.append(m_SNR)
 			#print('lc_t_list',lc_t_list)
 			for ind,lc_ti in enumerate(lc_t_list):
 				lc_dt = lc_ti[-1]-lc_ti[0]
+				m_SNR = lc_snr_list[ind]
 				#print('lc_dt',lc_dt)
 				if lc_dt<=2:
 					add_t = 15
@@ -368,23 +418,27 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				edges = bayesian_blocks(lt_t,np.round(lt_rate_new*binsize),fitness='events',gamma = np.exp(-4))
 				if len(edges)>=4:
 					result = background_correction(lt_t,lt_rate_new,edges,degree = 6)
-					startedges,stopedges = get_bayesian_duration(result,sigma = 3)
+					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 3,max_snr=True)
 					if startedges.size == stopedges.size:
 						if startedges.size >0:
+							
 							good_wind_start = good_wind_start+[range_t_min]*startedges.size
 							good_wind_stop = good_wind_stop+[range_t_max]*startedges.size
 							good_start = good_start + list(startedges)
 							good_stop = good_stop + list(stopedges)
+							good_SNR = good_SNR + list(new_snr)
 						else:
 							wind_start.append(range_t_min)
 							wind_stop.append(range_t_max)
 							start.append(lc_ti[0])
 							stop.append(lc_ti[-1])
+							SNR.append(m_SNR)
 					else:
 						wind_start.append(range_t_min)
 						wind_stop.append(range_t_max)
 						start.append(lc_ti[0])
 						stop.append(lc_ti[-1])
+						SNR.append(m_SNR)
 				else:
 					if lc_dt<=2:#Temporary abandonment
 						print('work in events!')
@@ -412,8 +466,8 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 							lt_rate = lt_cs + lt_bs.mean()
 							result = background_correction(lt_t, lt_rate, edges,
 							                               degree=6)
-							startedges, stopedges = get_bayesian_duration(result,
-							                                              sigma=3)
+							startedges, stopedges,new_snr = get_bayesian_duration(result,
+							                                              sigma=3,max_snr=True)
 							if startedges.size == stopedges.size:
 								if startedges.size > 0:
 									good_wind_start = good_wind_start + [
@@ -422,26 +476,31 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 										range_t_max] * startedges.size
 									good_start = good_start + list(startedges)
 									good_stop = good_stop + list(stopedges)
+									good_SNR = good_SNR + list(new_snr)
 								else:
 									wind_start.append(range_t_min)
 									wind_stop.append(range_t_max)
 									start.append(lc_ti[0])
 									stop.append(lc_ti[-1])
+									SNR.append(m_SNR)
 							else:
 								wind_start.append(range_t_min)
 								wind_stop.append(range_t_max)
 								start.append(lc_ti[0])
 								stop.append(lc_ti[-1])
+								SNR.append(m_SNR)
 						else:
 							wind_start.append(range_t_min)
 							wind_stop.append(range_t_max)
 							start.append(lc_ti[0])
 							stop.append(lc_ti[-1])
+							SNR.append(m_SNR)
 					else:
 						wind_start.append(range_t_min)
 						wind_stop.append(range_t_max)
 						start.append(lc_ti[0])
 						stop.append(lc_ti[-1])
+						SNR.append(m_SNR)
 	c = {
 		'lc':lc_list,
 		'lc_bs':lc_bs_list,
@@ -450,10 +509,12 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 		'good_wind_stop':np.array(good_wind_stop),
 		'good_start':np.array(good_start),
 		'good_stop':np.array(good_stop),
+		'good_SNR':np.array(good_SNR),
 		'wind_start':np.array(wind_start),
 		'wind_stop':np.array(wind_stop),
 		'start':np.array(start),
-		'stop':np.array(stop)
+		'stop':np.array(stop),
+		'SNR':np.array(SNR)
 	}
 	return c
 	

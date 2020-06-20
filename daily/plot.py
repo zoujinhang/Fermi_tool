@@ -172,9 +172,8 @@ class Plot_track(object):
 		self.geometry = geometry
 		self.clock = geometry.Time_transition
 		self.t_r_cmap = ListedColormap(['k', '#d3d7d4'])
-		self.t_r_norm = BoundaryNorm([0, self.geometry.radius,181], self.t_r_cmap.N)
 		self.t_b_cmap = ListedColormap(['#f47920', '#ffce7b'])
-		self.t_b_norm = BoundaryNorm([0, self.geometry.radius,181], self.t_b_cmap.N)
+		
 		
 	def get_bayesian_responses_size(self,sn):
 		sn_serch_result = self.result[sn]
@@ -333,7 +332,7 @@ class Plot_track(object):
 		plt.xlabel('Start at ' + str(utc_start)+' (s)')
 	
 		
-	def plot_one_source(self,sn,positions,axs):
+	def plot_one_source(self,sn,positions,range_,axs):
 		'''
 		
 		:param sn:
@@ -342,6 +341,8 @@ class Plot_track(object):
 		:return:
 		'''
 		
+		t_r_norm = BoundaryNorm([0, self.geometry.radius+range_,181+range_], self.t_r_cmap.N)
+		t_b_norm = BoundaryNorm([0, self.geometry.radius+range_,181+range_], self.t_b_cmap.N)
 		
 		tirg_data = self.result['lc']
 		sn_serch_result = self.result[sn]
@@ -405,13 +406,13 @@ class Plot_track(object):
 				seq = self.geometry.get_separation_with_time(lc_tc,positions)
 				seq = seq[deteri].values
 				
-				t_r = LineCollection(t_r_segments, cmap=self.t_r_cmap, norm=self.t_r_norm)
+				t_r = LineCollection(t_r_segments, cmap=self.t_r_cmap, norm=t_r_norm)
 				t_r.set_array(seq)
 				t_r.set_linewidth(2)
 				#lc.set_linewidth(2)
 				axs[ind*2].add_collection(t_r)
 
-				t_b = LineCollection(t_b_segments, cmap=self.t_b_cmap, norm=self.t_b_norm)
+				t_b = LineCollection(t_b_segments, cmap=self.t_b_cmap, norm=t_b_norm)
 				t_b.set_array(seq)
 				t_b.set_linewidth(2)
 				axs[ind*2].add_collection(t_b)
@@ -427,7 +428,7 @@ class Plot_track(object):
 			axs[ind*2+1].set_xlabel('Start at ' + str(utc_start)+' (s)')
 			#axs[ind*2+1].legend()
 	
-	def plot_one_detector(self,sn,detector,positions,axs):
+	def plot_one_detector(self,sn,detector,positions,range_,axs):
 		'''
 		
 		:param sn:
@@ -436,6 +437,8 @@ class Plot_track(object):
 		:param axs:
 		:return:
 		'''
+		t_r_norm = BoundaryNorm([0, self.geometry.radius+range_,181+range_], self.t_r_cmap.N)
+		t_b_norm = BoundaryNorm([0, self.geometry.radius+range_,181+range_], self.t_b_cmap.N)
 		tirg_data = self.result['lc']
 		sn_serch_result = self.result[sn]
 		sn_trig_0 = sn_serch_result['trig_0']
@@ -497,12 +500,12 @@ class Plot_track(object):
 			seq = self.geometry.get_separation_with_time(lc_tc, positions)
 			seq = seq[detector].values
 			
-			t_r = LineCollection(t_r_segments, cmap=self.t_r_cmap, norm=self.t_r_norm)
+			t_r = LineCollection(t_r_segments, cmap=self.t_r_cmap, norm=t_r_norm)
 			t_r.set_array(seq)
 			t_r.set_linewidth(2)
 			axs[0].add_collection(t_r)
 			
-			t_b = LineCollection(t_b_segments, cmap=self.t_b_cmap, norm=self.t_b_norm)
+			t_b = LineCollection(t_b_segments, cmap=self.t_b_cmap, norm=t_b_norm)
 			t_b.set_array(seq)
 			t_b.set_linewidth(2)
 			axs[0].add_collection(t_b)
