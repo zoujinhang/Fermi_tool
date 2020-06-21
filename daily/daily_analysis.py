@@ -1,11 +1,11 @@
 
 import numpy as np
-import matplotlib.pyplot as plt
-from astropy.stats import sigma_clip,mad_std,bayesian_blocks
-import operator
-from Data_analysis.Baseline import TD_baseline
-from Data_analysis.Bayesian_duration import background_correction,get_bayesian_duration,get_SNR
-from scipy import stats
+#import matplotlib.pyplot as plt
+from astropy.stats import bayesian_blocks#,sigma_clip,mad_std
+#import operator
+from Data_analysis.Baseline import TD_bs,TD_baseline
+from Data_analysis.Bayesian_duration import background_correction,get_bayesian_duration
+#from scipy import stats
 import pandas as pd
 from astropy.coordinates import SkyCoord
 
@@ -118,7 +118,7 @@ def search_candidates(data,detectors,geometry):
 	for deteri in detectors:
 		ni = data[deteri]['events']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else=0.01,distinguish = 1.5,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064*2,binsize_else=0.01,distinguish = 1.1,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -154,8 +154,8 @@ def trig_filrate(trig_data,geometry,detectors):
 	tig_t = time_overlap(trig_all[index_0],n=2)
 	tig_a0 = angle_overlap(tig_t,angle_overlap_,n = 2)
 	index_1  = trig_all['bayes']==1
-	tig_t = time_overlap(trig_all[index_1],n=1)
-	tig_a1 = angle_overlap(tig_t,angle_overlap_,n = 1)
+	tig_t = time_overlap(trig_all[index_1],n=2)
+	tig_a1 = angle_overlap(tig_t,angle_overlap_,n = 2)
 	c = {'trig_0':tig_a0,
 	     'trig_1':tig_a1,
 	     'trig_all':trig_all}
@@ -331,7 +331,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 	return pd.DataFrame(c)
 	
 
-def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.5,sigma = 3):
+def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.1,sigma = 3):
 	'''
 	
 	:param t:
@@ -359,14 +359,14 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 	sigma_list = []
 	for lc in lc_list:
 		lc_t,lc_rate = lc
-		lc_t,lc_cs,lc_bs = TD_baseline(lc_t,lc_rate)
+		lc_cs,lc_bs,scale = TD_bs(lc_t,lc_rate,sigma = True)
 		lc_bs_list.append(lc_bs)
-		mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
-		myfilter = list(map(operator.not_, mask))
-		lc_median_part = lc_cs[myfilter]
-		loc,scale = stats.norm.fit(lc_median_part)
+		#mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
+		#myfilter = list(map(operator.not_, mask))
+		#lc_median_part = lc_cs[myfilter]
+		#loc,scale = stats.norm.fit(lc_median_part)
 		sigma_list.append(scale)
-		index_ = np.where(lc_cs>loc+sigma*scale)[0]
+		index_ = np.where(lc_cs>sigma*scale)[0]
 		if len(index_)>0:
 			lc_t_list = []
 			lc_snr_list = []
@@ -375,7 +375,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 			for i in i_list:
 				lc_ti = lc_t[i]
 				lc_csi = lc_cs[i]
-				m_SNR = (lc_csi.max()-loc)/scale
+				m_SNR = lc_csi.max()/scale
 				if len(lc_ti) < 5:
 					lc_t_list.append([lc_ti.min()-2*binsize,lc_ti.max()+2*binsize])
 				else:
@@ -412,13 +412,16 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				#print('d_range_t',range_t_max-range_t_min)
 				t_index = np.where((lc_t>=range_t_min)&(lc_t<=range_t_max))[0]
 				lt_t = lc_t[t_index]
+				#lt_rate = lc_rate[t_index]
+				#lt_t,lt_cs,lt_bs = TD_baseline(lt_t,lt_rate)
 				#print('lt_t',lt_t)
 				#lt_rate = lc_rate[t_index]
 				lt_rate_new = lc_cs_new[t_index]
-				edges = bayesian_blocks(lt_t,np.round(lt_rate_new*binsize),fitness='events',gamma = np.exp(-4))
+				#lt_rate_new = lt_cs + lt_bs.mean()
+				edges = bayesian_blocks(lt_t,np.round(lt_rate_new*binsize),fitness='events',gamma = np.exp(-5))
 				if len(edges)>=4:
-					result = background_correction(lt_t,lt_rate_new,edges,degree = 6)
-					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 3,max_snr=True)
+					result = background_correction(lt_t,lt_rate_new,edges,degree = 6.5)
+					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 4,max_snr=True)
 					if startedges.size == stopedges.size:
 						if startedges.size >0:
 							
@@ -450,7 +453,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 							new_t1 = range_t_max
 						t_index = np.where((t >= new_t0) & (t <= new_t1))[0]
 						t_in = t[t_index]
-						edges = bayesian_blocks(t_in, fitness='events', p0=0.05)
+						edges = bayesian_blocks(t_in, fitness='events', p0=0.01)
 						gg = np.around(edges / binsize_else)
 						gg = np.unique(gg)
 						gg = np.sort(gg)
