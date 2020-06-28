@@ -8,6 +8,9 @@ from Data_analysis.Bayesian_duration import background_correction,get_bayesian_d
 #from scipy import stats
 import pandas as pd
 from astropy.coordinates import SkyCoord
+import warnings
+
+
 
 class Sources(object):
 	def __init__(self,positions=None,names=None,frame='icrs',unit = 'deg',range_ = 10):
@@ -118,7 +121,7 @@ def search_candidates(data,detectors,geometry):
 	for deteri in detectors:
 		ni = data[deteri]['events']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.064*2,binsize_else=0.01,distinguish = 1.1,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.064,wt = 0.5,binsize_else=0.01,distinguish = 1.1,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -370,7 +373,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 		if len(index_)>0:
 			lc_t_list = []
 			lc_snr_list = []
-			lc_cs_new = lc_cs + lc_bs.mean()
+			#lc_cs_new = lc_cs + lc_bs.mean()
 			i_list = get_subsection_index(index_,binsize,distinguish)
 			for i in i_list:
 				lc_ti = lc_t[i]
@@ -412,15 +415,19 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				#print('d_range_t',range_t_max-range_t_min)
 				t_index = np.where((lc_t>=range_t_min)&(lc_t<=range_t_max))[0]
 				lt_t = lc_t[t_index]
-				#lt_rate = lc_rate[t_index]
-				#lt_t,lt_cs,lt_bs = TD_baseline(lt_t,lt_rate)
+				lt_rate = lc_rate[t_index]
+				lt_t,lt_cs,lt_bs = TD_baseline(lt_t,lt_rate)
 				#print('lt_t',lt_t)
 				#lt_rate = lc_rate[t_index]
-				lt_rate_new = lc_cs_new[t_index]
-				#lt_rate_new = lt_cs + lt_bs.mean()
-				edges = bayesian_blocks(lt_t,np.round(lt_rate_new*binsize),fitness='events',gamma = np.exp(-5))
+				#lt_rate_new = lc_cs_new[t_index]
+				lt_rate_new = lt_cs + lt_bs.mean()
+				nn_lt_rate_new = np.round(lt_rate_new*binsize)
+				nn_index = np.where(nn_lt_rate_new>0)[0]
+				nn_lt_t = lt_t[nn_index]
+				nn_lt_rate_new = nn_lt_rate_new[nn_index]
+				edges = bayesian_blocks(nn_lt_t,nn_lt_rate_new,fitness='events',gamma = np.exp(-5))
 				if len(edges)>=4:
-					result = background_correction(lt_t,lt_rate_new,edges,degree = 6.5)
+					result = background_correction(lt_t,lt_rate_new,edges,degree = 7)
 					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 4,max_snr=True)
 					if startedges.size == stopedges.size:
 						if startedges.size >0:
