@@ -121,7 +121,7 @@ def search_candidates(data,detectors,geometry):
 	for deteri in detectors:
 		ni = data[deteri]['events']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.5,binsize_else=0.01,distinguish = 1.1,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.064,wt = 0.5,binsize_else=0.01,distinguish = 1.0,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -253,6 +253,9 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 	ni_list = []
 	t_over_list = []
 	snr_list = []
+	
+	#old_t_start = 0
+	#old_t_stop = 0
 	for i in range(tig_all.shape[0]):
 		t_i = tig_all.iloc[i]
 		ni = t_i['detector']
@@ -260,6 +263,8 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 		stop = t_i['stop']
 		snr = t_i['SNR']
 		if i == 0 :
+			#old_t_start = start
+			#old_t_stop = stop
 			t_over_list.append([start,stop])
 			ni_list.append(ni)
 			snr_list.append(snr)
@@ -269,18 +274,28 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 				if ((start<stop0)and(stop>start0)):#time overlap.
 					trun_n = trun_n+1
 			if len(t_over_list) == trun_n:
-				t_over_list.append([start,stop])
+				t_over_list.append([start, stop])
+				#t_over_array = np.array(t_over_list).T
+				#old_t_start = np.median(t_over_array[0])
+				#old_t_stop = t_over_array[1].max()
 				ni_list.append(ni)
 				snr_list.append(snr)
-			#elif trun_n>=3:
+				
+			#elif (trun_n>=2)and(start<old_t_stop)and(stop>old_t_start):
+				
 			#	t_over_list.append([start,stop])
+			#	t_over_array = np.array(t_over_list).T
+			#	old_t_start = np.median(t_over_array[0])
+			#	old_t_stop = t_over_array[1].max()
 			#	ni_list.append(ni)
+			#	snr_list.append(snr)
+				
 			elif trun_n == 0:
 				snr_arr = np.array(snr_list)
 				if (len(t_over_list) >= n)or(snr_arr[snr_arr>case0].size>0):
-					t_over_array = np.array(t_over_list)
-					t_max = t_over_array.max()
-					t_min = t_over_array.min()
+					t_over_array = np.array(t_over_list).T
+					t_max = t_over_array[1].max()
+					t_min = np.median(t_over_array[0])
 					t_during = t_max - t_min
 					wind_during_harf = 0.5*t_during/0.62
 					if wind_during_harf<2.5:
@@ -300,12 +315,13 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
 					snr_list = [snr]
+			'''
 			else:
 				snr_arr = np.array(snr_list)
 				if (len(t_over_list) >= n)or(snr_arr[snr_arr>case0].size>0):
-					t_over_array = np.array(t_over_list)
-					t_max = t_over_array.max()
-					t_min = t_over_array.min()
+					t_over_array = np.array(t_over_list).T
+					t_max = t_over_array[1].max()
+					t_min = np.median(t_over_array[0])
 					t_during = t_max - t_min
 					wind_during_harf = 0.5 * t_during / 0.62
 					if wind_during_harf < 2.5:
@@ -325,6 +341,8 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 					t_over_list = [[start,stop]]
 					ni_list = [ni]
 					snr_list = [snr]
+			'''
+		print(i,t_over_list)
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
 	     'wind_start':np.array(new_wind_start),
@@ -332,7 +350,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 	     'SNR': new_snr,
 	     'ni_list':new_name}
 	return pd.DataFrame(c)
-	
+
 
 def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.1,sigma = 3):
 	'''
@@ -362,12 +380,13 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 	sigma_list = []
 	for lc in lc_list:
 		lc_t,lc_rate = lc
-		lc_t,lc_cs,lc_bs = TD_baseline(lc_t,lc_rate)
+		#lc_t,lc_cs,lc_bs = TD_baseline(lc_t,lc_rate)
+		lc_cs,lc_bs,scale = TD_bs(lc_t,lc_rate,sigma = True,it = 6)
 		lc_bs_list.append(lc_bs)
-		mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
-		myfilter = list(map(operator.not_, mask))
-		lc_median_part = lc_cs[myfilter]
-		loc,scale = stats.norm.fit(lc_median_part)
+		#mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
+		#myfilter = list(map(operator.not_, mask))
+		#lc_median_part = lc_cs[myfilter]
+		#loc,scale = stats.norm.fit(lc_median_part)
 		sigma_list.append(scale)
 		index_ = np.where(lc_cs>sigma*scale)[0]
 		if len(index_)>0:
@@ -390,11 +409,17 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				m_SNR = lc_snr_list[ind]
 				#print('lc_dt',lc_dt)
 				if lc_dt<=2:
-					add_t = 15
+					add_t = 5
+				elif lc_dt<=20:
+					add_t = 10
 				elif lc_dt<=50:
-					add_t = 80
+					add_t = 30
+				elif lc_dt<=80:
+					add_t = 50
+				elif lc_dt<=100:
+					add_t = 60
 				else:
-					add_t = 100
+					add_t = 80
 				range_t_min = lc_ti[0]-add_t
 				if ind == 0:
 					if range_t_min < lc_t.min():
@@ -428,7 +453,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				edges = bayesian_blocks(nn_lt_t,nn_lt_rate_new,fitness='events',gamma = np.exp(-5))
 				if len(edges)>=4:
 					result = background_correction(lt_t,lt_rate_new,edges,degree = 7)
-					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 4,max_snr=True)
+					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 3,max_snr=True)
 					if startedges.size == stopedges.size:
 						if startedges.size >0:
 							
@@ -481,9 +506,9 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 							
 							
 							result = background_correction(lt_t, lt_rate, edges,
-							                               degree=6)
+							                               degree=7)
 							startedges, stopedges,new_snr = get_bayesian_duration(result,
-							                                              sigma=4,max_snr=True)
+							                                              sigma=3,max_snr=True)
 							if startedges.size == stopedges.size:
 								if startedges.size > 0:
 									good_wind_start = good_wind_start + [
