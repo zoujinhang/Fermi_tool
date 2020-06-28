@@ -1,14 +1,14 @@
 
 import numpy as np
 #import matplotlib.pyplot as plt
-from astropy.stats import bayesian_blocks#,sigma_clip,mad_std
-#import operator
+from astropy.stats import bayesian_blocks,sigma_clip,mad_std
+import operator
 from Data_analysis.Baseline import TD_bs,TD_baseline
 from Data_analysis.Bayesian_duration import background_correction,get_bayesian_duration
-#from scipy import stats
+from scipy import stats
 import pandas as pd
 from astropy.coordinates import SkyCoord
-import warnings
+
 
 
 
@@ -362,12 +362,12 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 	sigma_list = []
 	for lc in lc_list:
 		lc_t,lc_rate = lc
-		lc_cs,lc_bs,scale = TD_bs(lc_t,lc_rate,sigma = True)
+		lc_t,lc_cs,lc_bs = TD_baseline(lc_t,lc_rate)
 		lc_bs_list.append(lc_bs)
-		#mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
-		#myfilter = list(map(operator.not_, mask))
-		#lc_median_part = lc_cs[myfilter]
-		#loc,scale = stats.norm.fit(lc_median_part)
+		mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
+		myfilter = list(map(operator.not_, mask))
+		lc_median_part = lc_cs[myfilter]
+		loc,scale = stats.norm.fit(lc_median_part)
 		sigma_list.append(scale)
 		index_ = np.where(lc_cs>sigma*scale)[0]
 		if len(index_)>0:
@@ -451,7 +451,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 						SNR.append(m_SNR)
 				else:
 					if lc_dt<=2:#Temporary abandonment
-						print('work in events!')
+						print ('work with binsize else!')
 						new_t0 = lc_ti[0]-3
 						if new_t0<range_t_min:
 							new_t0 = range_t_min
@@ -460,24 +460,30 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 							new_t1 = range_t_max
 						t_index = np.where((t >= new_t0) & (t <= new_t1))[0]
 						t_in = t[t_index]
-						edges = bayesian_blocks(t_in, fitness='events', p0=0.01)
-						gg = np.around(edges / binsize_else)
-						gg = np.unique(gg)
-						gg = np.sort(gg)
-						edges = gg * binsize_else
+						lt_bins = np.arange(t_in.min(), t_in.max(),
+						                    binsize_else)
+						lt_bin_n = np.histogram(t_in, bins=lt_bins)[0]
+						lt_bin_c = 0.5 * (lt_bins[1:] + lt_bins[:-1])
+						lt_t, lt_cs, lt_bs = TD_baseline(lt_bin_c,
+						                                 lt_bin_n / binsize_else)
+						lt_rate = lt_cs + lt_bs.mean()
+						nn_lt_n = np.round(lt_rate*binsize_else)
+						nn_index = np.where(nn_lt_n>0)[0]
+						nn_lt_bin_c = lt_bin_c[nn_index]
+						nn_lt_n = nn_lt_n[nn_index]
+						
+						edges = bayesian_blocks(nn_lt_bin_c,nn_lt_n, fitness='events', p0=0.05)
+						#gg = np.around(edges / binsize_else)
+						#gg = np.unique(gg)
+						#gg = np.sort(gg)
+						#edges = gg * binsize_else
 						if len(edges) >= 4:
 							
-							lt_bins = np.arange(t_in.min(), t_in.max(),
-							                    binsize_else)
-							lt_bin_n = np.histogram(t_in, bins=lt_bins)[0]
-							lt_bin_c = 0.5 * (lt_bins[1:] + lt_bins[:-1])
-							lt_t, lt_cs, lt_bs = TD_baseline(lt_bin_c,
-							                                 lt_bin_n / binsize_else)
-							lt_rate = lt_cs + lt_bs.mean()
+							
 							result = background_correction(lt_t, lt_rate, edges,
 							                               degree=6)
 							startedges, stopedges,new_snr = get_bayesian_duration(result,
-							                                              sigma=3,max_snr=True)
+							                                              sigma=4,max_snr=True)
 							if startedges.size == stopedges.size:
 								if startedges.size > 0:
 									good_wind_start = good_wind_start + [
