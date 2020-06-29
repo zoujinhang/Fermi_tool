@@ -342,7 +342,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 					ni_list = [ni]
 					snr_list = [snr]
 			'''
-		print(i,t_over_list)
+		#print(i,t_over_list)
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
 	     'wind_start':np.array(new_wind_start),
