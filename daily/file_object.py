@@ -71,7 +71,8 @@ class Database(object):
 			data[deter] = {}
 		
 		for deter in self.detector:
-			print('get',deter,'data.')
+			#print('                                                                   ',end = '\r')
+			#print('get',deter,'data.',end='\r')
 			#year,month,day
 			data[deter]['ch_E'] = None
 			data[deter]['events'] = None
@@ -131,7 +132,7 @@ class Database(object):
 			#data[deter]['events'] = fl[index_]
 			#print('all',data[deter]['events'].shape)
 			if date_time_arr.shape[0]>1:
-				data[deter]['events'].drop_duplicates('TIME','first',inplace=True,ignore_index=True)
+				data[deter]['events'].drop_duplicates(['TIME'],keep = 'first',inplace=True,ignore_index=True)
 				data[deter]['events'].sort_values(by = 'TIME',inplace=True,ignore_index=True)
 				#print('drop',data[deter]['events'].shape)
 			index_ = (data[deter]['events']['TIME']>=met_start)&(data[deter]['events']['TIME']<=met_stop)
@@ -183,10 +184,13 @@ class Database(object):
 				print('The poshist file is missing.')
 				print(name)
 				return None
-		if date_time_arr.shape[0]>1:
-			data.drop_duplicates('SCLK_UTC','first',inplace=True,ignore_index=True)
-			data.sort_values(by = 'SCLK_UTC')
+		if data.shape[0]>1:
+			data.drop_duplicates(['SCLK_UTC'],keep='first',inplace=True,ignore_index=True)
+			#_,index_ = np.unique(data['SCLK_UTC'].values,return_index=True)
+			#data = data[index_]
+			data.sort_values(by = 'SCLK_UTC',inplace=True,ignore_index=True)
 		index_ = (data['SCLK_UTC']>=met_start-60)&(data['SCLK_UTC']<=met_stop+60)
+		print('poshish data shape :',data[index_].shape)
 		return data[index_]
 	
 

@@ -7,6 +7,7 @@ import Data_analysis.file as myfile
 import pymultinest
 from .analysis import Analyzer
 from .PlotMarginalModes import PlotMarginalModes
+from scipy.stats import chi2
 import matplotlib.pyplot as plt
 import ctypes
 import sys
@@ -153,6 +154,64 @@ class Fit(object):
 		#a1 = pymultinest.Analyzer(outputfiles_basename=outputfiles_basename, n_params = self.n_params)
 		a1 = Analyzer(outputfiles_basename=outputfiles_basename, n_params = self.n_params)
 		return a1
+	
+	def chi2_check(self,model_sp):
+		
+		retur_inde_list = []
+		indexi = []
+		sum = 0
+		for index,i in enumerate(model_sp):
+			sum = sum + i
+			indexi.append(index)
+			if sum > 5:
+				retur_inde_list.append(indexi)
+				sum = 0
+				indexi = []
+		if len(indexi)>0:
+			retur_inde_list[-1] = retur_inde_list[-1] + indexi
+		
+		return retur_inde_list
+		
+	
+	def get_chi2_text(self,a1):
+		
+		k = 0
+		chi2_value = 0
+		best_value = a1.get_best_fit()['parameters']
+		r_ = len(best_value)
+		for spec in self.spectrumlist:
+			sp = spec.spectrum
+			e_add = spec.e_add
+			rate = self.model(e_add,best_value)
+			spec1 = self.get_A(rate,spec.e_lo,spec.e_hi,spec.e_add_num)
+			model_sp = spec.transform(spec1)
+			effinde = spec.effective_index
+			if effinde is not None:
+				model_sp = model_sp[effinde[0]:effinde[-1]]
+				sp = sp[effinde[0]:effinde[-1]]
+				
+			index_list = self.chi2_check(model_sp)
+			new_model_sp = []
+			new_sp = []
+			for inde_i in index_list:
+				new_model_sp.append(np.sum(model_sp[inde_i]))
+				new_sp.append(np.sum(sp[inde_i]))
+			new_model_sp = np.array(new_model_sp)
+			new_sp = np.array(new_sp)
+			chi2_s = (new_sp-new_model_sp)**2/new_model_sp
+			k = k + len(chi2_s)
+			chi2_value = chi2_value + chi2_s.sum()
+			
+			
+		df = k - r_ - 1
+		p = chi2.pdf(chi2_value,df)
+		return {
+			'p':p,
+			'df':df,
+			'chi2':chi2_value
+		}
+		
+		
 		
 	def plot_model(self,a1,n = 0,ax = None,reference = True):
 		'''
@@ -326,8 +385,8 @@ class Fit(object):
 		lolims = np.zeros(len(sigmal),dtype=bool)
 		#l_index = np.where(sigmal<0)[0]
 		#h_index = np.where()
-		lolims[[sigmal<=0]]=True
-		uplims[[sigmah<=0]]=True
+		lolims[sigmal<=0]=True
+		uplims[sigmah<=0]=True
 		sigmal[sigmal < 0] = 0
 		sigmah[sigmah < 0] = 0
 		plt.figure(figsize=(5*self.n_params,5*self.n_params))

@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import ListedColormap, BoundaryNorm
+import cartopy.crs as ccrs
+from matplotlib.gridspec import GridSpec
 
 
 class Plot_serch(object):
@@ -160,13 +162,15 @@ class Plot_serch(object):
 	
 class Plot_track(object):
 	
-	def __init__(self,result,detector,geometry):
+	def __init__(self,result,detector,geometry,sources=None):
 		'''
 		
 		:param result:
 		:param detector: detector name list
 		:param geometry:
 		'''
+		
+		self.sources=sources
 		self.result = result
 		self.detector = detector
 		self.geometry = geometry
@@ -180,7 +184,7 @@ class Plot_track(object):
 		sn_trig_1 = sn_serch_result['trig_1'].drop_duplicates('start','first',inplace=False,ignore_index=True)
 		return sn_trig_1.shape[0]
 		
-	def plot_bayesian_responses(self,sn,index):
+	def plot_bayesian_responses(self,sn,index,sky_map = False):
 		
 		tirg_data = self.result['lc']
 		sn_serch_result = self.result[sn]
@@ -188,14 +192,20 @@ class Plot_track(object):
 		t_i = sn_trig_1.iloc[index]
 		overlap = t_i['overlap']
 		n = len(overlap)
-		plt.figure(constrained_layout=True,figsize=(10,4*n))
+		if sky_map:
+			fig = plt.figure(constrained_layout=True,figsize=(10,2.5*(n+2)))
+			gs = GridSpec(n+2,1)
+		else:
+			fig = plt.figure(constrained_layout=True,figsize=(10,4*n))
+			gs = GridSpec(n,1)
 		for i in range(n):
 			n0_c = tirg_data[overlap[i]]
 			lc_list = n0_c['lc']
 			lc_bs_list = n0_c['lc_bs']
 			sigma = n0_c['sigma']
-			plt.subplot(n,1,i+1)
-			plt.plot(0,0,color = 'k',label = overlap[i])
+			
+			axi = fig.add_subplot(gs[i])
+			axi.plot(0,0,color = 'k',label = overlap[i])
 			#plt.plot(0,0,color = '#f47920',label = 'background')
 			min_ = 100000
 			max_ = 0
@@ -211,28 +221,41 @@ class Plot_track(object):
 					if lc_rate1.max()>max_:
 						max_ = lc_rate1.max()
 					lc_bs1 = lc_bs[index1]
-					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
-					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
-					plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
-			plt.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
-			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
-			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+					axi.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					axi.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+					axi.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
+			axi.axvline(x = t_i['start']-t_i['wind_start'],color = 'r')
+			axi.axvline(x = t_i['stop']-t_i['wind_start'],color = 'g')
+			axi.set_xlim(0,t_i['wind_stop']-t_i['wind_start'])
 			mean_ = 0.5*(max_+min_)
 			high_harf =0.5*(max_-min_)/0.9
-			plt.ylim(mean_-high_harf,mean_+high_harf)
-			plt.ylabel('Count rate')
-			plt.legend(loc = 'upper left')
+			axi.set_ylim(mean_-high_harf,mean_+high_harf)
+			axi.set_ylabel('Count rate')
+			axi.legend(loc = 'upper left')
 			if i != n-1:
-				plt.xticks([])
-		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
-		plt.xlabel('Start at ' + str(utc_start)+' (s)')
-	
+				axi.set_xticks([])
+			else:
+				utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+				axi.set_xlabel('Start at ' + str(utc_start)+' (s)')
+		if sky_map:
+			ax_ = fig.add_subplot(gs[-2:],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
+			
+			if self.sources is not None:
+				source_name = self.sources.names
+				index = np.where(np.array(source_name) == sn)
+				pos = self.sources.positions[index]
+			else:
+				pos = None
+			self.geometry.detector_plot(ax=ax_, time=t_i['start'], show_bodies=True, size=0.5,source = pos,highlight=overlap)
+			
+			
+			
 	def get_threshold_responses_size(self,sn):
 		sn_serch_result = self.result[sn]
 		sn_trig_0 = sn_serch_result['trig_0'].drop_duplicates('start','first',inplace=False,ignore_index=True)
 		return sn_trig_0.shape[0]
 		
-	def plot_threshold_responses(self,sn,index):
+	def plot_threshold_responses(self,sn,index,sky_map = False):
 		
 		tirg_data = self.result['lc']
 		sn_serch_result = self.result[sn]
@@ -240,14 +263,21 @@ class Plot_track(object):
 		t_i = sn_trig_0.iloc[index]
 		overlap = t_i['overlap']
 		n = len(overlap)
-		plt.figure(constrained_layout=True,figsize=(10,4*n))
+		if sky_map:
+			fig = plt.figure(constrained_layout=True,figsize=(10,2.5*(n+2)))
+			gs = GridSpec(n+2,1)
+		else:
+			fig = plt.figure(constrained_layout=True,figsize=(10,4*n))
+			gs = GridSpec(n,1)
+		#plt.figure(constrained_layout=True,figsize=(10,4*n))
 		for i in range(n):
 			n0_c = tirg_data[overlap[i]]
 			lc_list = n0_c['lc']
 			lc_bs_list = n0_c['lc_bs']
 			sigma = n0_c['sigma']
-			plt.subplot(n,1,i+1)
-			plt.plot(0,0,color = 'k',label = overlap[i])
+			axi = fig.add_subplot(gs[i])
+			#plt.subplot(n,1,i+1)
+			axi.plot(0,0,color = 'k',label = overlap[i])
 			#plt.plot(0,0,color = '#f47920',label = 'background')
 			min_ = 100000
 			max_ = 0
@@ -263,22 +293,33 @@ class Plot_track(object):
 					if lc_rate1.max()>max_:
 						max_ = lc_rate1.max()
 					lc_bs1 = lc_bs[index1]
-					plt.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
-					plt.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
-					plt.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
-			plt.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
-			plt.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
-			plt.xlim(0,t_i['wind_stop']-t_i['wind_start'])
+					axi.plot(lc_t1-t_i['wind_start'],lc_rate1,color = 'k')
+					axi.plot(lc_t1-t_i['wind_start'],lc_bs1,color = '#ef4136')
+					axi.plot(lc_t1-t_i['wind_start'],lc_bs1+3*sigma[indx],color = '#f47920')
+			axi.axvline(x = t_i['start']-t_i['wind_start'],color = '#ea66a6')
+			axi.axvline(x = t_i['stop']-t_i['wind_start'],color = '#009ad6')
+			axi.set_xlim(0,t_i['wind_stop']-t_i['wind_start'])
 			mean_ = 0.5*(max_+min_)
 			high_harf =0.5*(max_-min_)/0.9
-			plt.ylim(mean_-high_harf,mean_+high_harf)
-			plt.ylabel('Count rate')
-			plt.legend(loc = 'upper left')
+			axi.set_ylim(mean_-high_harf,mean_+high_harf)
+			axi.set_ylabel('Count rate')
+			axi.legend(loc = 'upper left')
 			if i != n-1:
-				plt.xticks([])
-		utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
-		plt.xlabel('Start at ' + str(utc_start)+' (s)')
-	
+				axi.set_xticks([])
+			else:
+				utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
+				plt.xlabel('Start at ' + str(utc_start)+' (s)')
+		if sky_map:
+			ax_ = fig.add_subplot(gs[-2:],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
+			if self.sources is not None:
+				source_name = self.sources.names
+				index = np.where(np.array(source_name) == sn)
+				pos = self.sources.positions[index]
+			else:
+				pos = None
+			self.geometry.detector_plot(ax=ax_, time=t_i['start'], show_bodies=True, size=0.5, source=pos,highlight=overlap)
+		
+		
 	def get_all_responses_size(self,sn):
 		sn_serch_result = self.result[sn]
 		sn_trig_0 = sn_serch_result['trig_all']

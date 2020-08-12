@@ -8,7 +8,7 @@ from Data_analysis.geometry import Geometry, Detectors
 from Data_analysis import Time_transform, Separate_source, ch_to_energy, TD_baseline
 from Data_analysis import get_bayesian_flash, get_bayesian_duration, background_correction, get_bayesian_txx, \
 	re_histogram
-from Data_analysis import Plot, save_result
+from Data_analysis import Plot, save_result,overlap_curve
 import astropy.units as u
 # from astropy.coordinates import SkyCoord
 from astropy.stats import bayesian_blocks
@@ -330,7 +330,8 @@ def get_file(input_list, NaI, BGO):
 	return data
 
 
-def get_spectrum(t, ch, ch_n, edges, bg_dt):
+
+def get_spectrum(t, ch, ch_n,bin_arr = None, edges=None, bg_dt=1.0):
 	data = []
 	data_err = []
 	bins = np.arange(t[0], t[-1], bg_dt)
@@ -341,10 +342,15 @@ def get_spectrum(t, ch, ch_n, edges, bg_dt):
 		bin_rate = bin_n / bg_dt
 		bin_rate = np.concatenate((bin_rate[:1], bin_rate))
 		bin_c, cs, bs = TD_baseline(bin_edges, bin_rate)
-		
-		len_edges = edges[1:] - edges[:-1]
-		bin_n1, bin_edges1 = np.histogram(t_ch, bins=edges)
-		bin_c1 = (bin_edges1[1:] + bin_edges1[:-1]) * 0.5
+		if edges is not None:
+			len_edges = edges[1:] - edges[:-1]
+			bin_n1, bin_edges1 = np.histogram(t_ch, bins=edges)
+			bin_c1 = (bin_edges1[1:] + bin_edges1[:-1]) * 0.5
+			
+		else:
+			len_edges = bin_arr[:,-1]-bin_arr[:,0]
+			bin_c1 = 0.5*(bin_arr[:,-1]+bin_arr[:,0])
+			bin_n1 = overlap_curve(t_ch,bins_arr = bin_arr)
 		bin_rate1 = bin_n1 / len_edges
 		bs1 = np.interp(bin_c1, bin_c, bs)
 		bin_err = np.sqrt(bin_n1) / len_edges

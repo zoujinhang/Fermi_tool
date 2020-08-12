@@ -476,7 +476,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 						SNR.append(m_SNR)
 				else:
 					if lc_dt<=2:#Temporary abandonment
-						print ('work with binsize else!')
+						#print ('work with binsize else!')
 						new_t0 = lc_ti[0]-3
 						if new_t0<range_t_min:
 							new_t0 = range_t_min
