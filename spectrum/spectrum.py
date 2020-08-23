@@ -236,9 +236,9 @@ class Fit(object):
 			for index,spec in enumerate(self.spectrumlist):
 				e_c,xxx = spec.get_reference()
 				if ax is not None:
-					ax.plot(e_c, e_c**n*xxx/(spec.e_hi-spec.e_lo), '-.',label =spec.name +  ' reference')
+					ax.plot(e_c, e_c**n*xxx/(spec.e_hi-spec.e_lo), '.',label =spec.name +  ' reference')
 				else:
-					plt.plot(e_c,e_c**n*xxx/(spec.e_hi-spec.e_lo) , '-.',label =spec.name + ' reference')
+					plt.plot(e_c,e_c**n*xxx/(spec.e_hi-spec.e_lo) , '.',label =spec.name + ' reference')
 				
 		for e_c in e_c_list:
 			if ax is not None:
