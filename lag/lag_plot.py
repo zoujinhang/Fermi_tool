@@ -14,6 +14,7 @@ class Lag_plot(object):
 		
 		lc = self.results['lc']
 		band = self.results['band']
+		wind = self.results['wind']
 		time = lc['time']
 		rate_list = lc['rate']
 		n = len(rate_list)
@@ -28,7 +29,10 @@ class Lag_plot(object):
 			ax.plot(time,ratei,'-',color = 'k',label = labeli)
 			ax.plot(time,bsi,'-',color = 'r')
 			ax.plot(time,bsi+sigma*sigmai,'-',color = 'g')
-			ax.set_xlim(time.min(),time.max())
+			if wind is not None:
+				ax.set_xlim(wind[0],wind[-1])
+			else:
+				ax.set_xlim(time.min(),time.max())
 			ax.set_ylabel('Rate')
 			ax.legend()
 			if index_ != 0 :

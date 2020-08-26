@@ -6,16 +6,21 @@ from scipy.interpolate import interp1d
 import os
 
 
-def get_lag(data,band,bins,sigma = 4,mcmc_num = 500,plot_savedir = None):
+def get_lag(data,band,bins,wind=None,sigma = 4,mcmc_num = 500,plot_savedir = None):
 	
 	binsize = bins[1]-bins[0]
 	t_c = 0.5*(bins[1:]+bins[:-1])
+	if wind is not None:
+		wind_index = np.where((t_c>=wind[0])&(t_c<=wind[-1]))[0]
+	else:
+		wind_index = np.arange(0,len(t_c),dtype = int)
 	t,energy = data
 	event_band = get_event_with_band(t,energy,band)
 	cs0 = None
 	cs_err0 = None
 	lag_errh2 = 0
 	lag_errl2 = 0
+	lag_all = 0
 	return_list = []
 	lc_list = []
 	for index_,(t_i,e_i) in enumerate(event_band):
@@ -47,16 +52,18 @@ def get_lag(data,band,bins,sigma = 4,mcmc_num = 500,plot_savedir = None):
 					savename = plot_savedir + 'A_nccf_' + str(index_) + '.png'
 				else:
 					savename = None
-				lag,lag_errl,lag_errh = get_one_lag(cs0,csi,cs_err0,rate_err_i,t_c,mcmc_num=mcmc_num,save = savename)
+				lag,lag_errl,lag_errh = get_one_lag(cs0[wind_index],csi[wind_index],cs_err0[wind_index],rate_err_i[wind_index],t_c[wind_index],mcmc_num=mcmc_num,save = savename)
+				lag_all = lag_all + lag
 				lag_errl2 = lag_errl2+lag_errl**2
 				lag_errh2 = lag_errh2 + lag_errh**2
-				return_list.append([index_,lag,np.sqrt(lag_errl2),np.sqrt(lag_errh2)])
+				return_list.append([index_,lag_all,np.sqrt(lag_errl2),np.sqrt(lag_errh2)])
 				cs0 = csi
 				cs_err0 = rate_err_i
 	
 	
 	return {
 		'band':band,
+		'wind':wind,
 		'lag':np.array(return_list).T,
 		'lc':{
 			'time':t_c,
