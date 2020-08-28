@@ -289,6 +289,7 @@ class Fit(object):
 					if reference:
 						plt.plot(e_c0,e_c0**n*xxx_sp, '-.',label = spec.name + ' reference')
 					plt.plot(e_c0,e_c0**n*model_sp,label = spec.name + ' model')
+	
 	def plot_data_in_model(self,a1,ax = None):
 		best_value = a1.get_best_fit()['parameters']
 		for spec in self.spectrumlist:

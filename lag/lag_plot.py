@@ -51,7 +51,7 @@ class Lag_plot(object):
 		if ax is None:
 			fig = plt.figure(constrained_layout=True)
 			ax = fig.add_subplot(1,1,1)
-		ax.errorbar(energyc[1:],lag[1:],yerr = [lag_errl[1:],lag_errh[1:]],label = 'lag data',fmt = '.')
+		ax.errorbar(energyc[1:],lag[1:],yerr = [lag_errl[1:],lag_errh[1:]],elinewidth=1,capsize=2,label = 'lag data',fmt = '.')
 		if ax is None:
 			return fig
 		else:
