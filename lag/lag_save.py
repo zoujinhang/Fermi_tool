@@ -8,7 +8,7 @@ class Lag_save(object):
 	def __init__(self,result):
 		self.result = result
 	
-	def save_lag_cvs(self,savename):
+	def save_lag_csv(self,savename):
 		
 		index_,lag,lag_errl,lag_errh = self.result['lag']
 		band_l,band_h = np.array(self.result['band'][index_.astype(np.int)]).T
