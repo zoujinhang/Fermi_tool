@@ -48,3 +48,10 @@ def get_band_in_unif(band,numb,ovelap=0.5):
 
 
 
+
+
+
+
+
+
+

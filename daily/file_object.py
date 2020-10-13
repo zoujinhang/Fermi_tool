@@ -59,8 +59,8 @@ class Database(object):
 			time_start = Time(time_start, format=format, scale=scale)
 		if isinstance(time_stop,Time) ==False:
 			time_stop =Time(time_stop,format=format,scale=scale)
-		met_start = self.clock.utc_to_met(time_start,astropyTime = True)
-		met_stop = self.clock.utc_to_met(time_stop,astropyTime = True)
+		met_start = self.clock.utc_to_met(time_start)
+		met_stop = self.clock.utc_to_met(time_stop)
 		#mjd_in_h = np.arange(time_start.mjd,time_stop.mjd,1/24)
 		#time_h_array = Time(mjd_in_h,format='mjd',scale='utc')
 		date_time_arr = pd.date_range(time_start.fits,time_stop.fits,freq = 'H')
@@ -151,8 +151,8 @@ class Database(object):
 		if isinstance(time_stop,Time) == False:
 			time_stop =Time(time_stop,format=format,scale=scale)
 			
-		met_start = self.clock.utc_to_met(time_start,astropyTime = True)
-		met_stop = self.clock.utc_to_met(time_stop,astropyTime = True)
+		met_start = self.clock.utc_to_met(time_start)
+		met_stop = self.clock.utc_to_met(time_stop)
 		date_time_arr = pd.date_range(time_start.fits,time_stop.fits,freq = 'D')
 		timelist = []
 		data = None

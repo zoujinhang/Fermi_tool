@@ -19,10 +19,10 @@ class Save_track(object):
 			stop_met = sn_trig['stop'].values
 			wind_start_met = sn_trig['wind_start'].values
 			wind_stop_met = sn_trig['wind_stop'].values
-			start_utc = self.clock.batch_met_to_utc(start_met).fits
-			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
-			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
-			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
+			start_utc = self.clock.met_to_utc(start_met).fits
+			stop_utc = self.clock.met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.met_to_utc(wind_stop_met).fits
 			overlap = sn_trig['overlap'].values
 			c = {'start_utc':start_utc,
 			     'stop_utc':stop_utc,
@@ -49,10 +49,10 @@ class Save_track(object):
 			stop_met = sn_trig['stop'].values
 			wind_start_met = sn_trig['wind_start'].values
 			wind_stop_met = sn_trig['wind_stop'].values
-			start_utc = self.clock.batch_met_to_utc(start_met).fits
-			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
-			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
-			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
+			start_utc = self.clock.met_to_utc(start_met).fits
+			stop_utc = self.clock.met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.met_to_utc(wind_stop_met).fits
 			overlap = sn_trig['overlap'].values
 			c = {'start_utc':start_utc,
 			     'stop_utc':stop_utc,
@@ -78,10 +78,10 @@ class Save_track(object):
 			stop_met = sn_trig['stop'].values
 			wind_start_met = sn_trig['wind_start'].values
 			wind_stop_met = sn_trig['wind_stop'].values
-			start_utc = self.clock.batch_met_to_utc(start_met).fits
-			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
-			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
-			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
+			start_utc = self.clock.met_to_utc(start_met).fits
+			stop_utc = self.clock.met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.met_to_utc(wind_stop_met).fits
 			detector = sn_trig['detector'].values
 			bayes = sn_trig['bayes']
 			if point is not None:
@@ -137,10 +137,10 @@ class Save_search(object):
 			stop_met = sn_trig['stop'].values
 			wind_start_met = sn_trig['wind_start'].values
 			wind_stop_met = sn_trig['wind_stop'].values
-			start_utc = self.clock.batch_met_to_utc(start_met).fits
-			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
-			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
-			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
+			start_utc = self.clock.met_to_utc(start_met).fits
+			stop_utc = self.clock.met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.met_to_utc(wind_stop_met).fits
 			overlap = sn_trig['overlap'].values
 			c = {'start_utc':start_utc,
 			     'stop_utc':stop_utc,
@@ -167,10 +167,10 @@ class Save_search(object):
 			stop_met = sn_trig['stop'].values
 			wind_start_met = sn_trig['wind_start'].values
 			wind_stop_met = sn_trig['wind_stop'].values
-			start_utc = self.clock.batch_met_to_utc(start_met).fits
-			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
-			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
-			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
+			start_utc = self.clock.met_to_utc(start_met).fits
+			stop_utc = self.clock.met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.met_to_utc(wind_stop_met).fits
 			overlap = sn_trig['overlap'].values
 			c = {'start_utc':start_utc,
 			     'stop_utc':stop_utc,
@@ -196,10 +196,10 @@ class Save_search(object):
 			stop_met = sn_trig['stop'].values
 			wind_start_met = sn_trig['wind_start'].values
 			wind_stop_met = sn_trig['wind_stop'].values
-			start_utc = self.clock.batch_met_to_utc(start_met).fits
-			stop_utc = self.clock.batch_met_to_utc(stop_met).fits
-			wind_start_utc = self.clock.batch_met_to_utc(wind_start_met).fits
-			wind_stop_utc = self.clock.batch_met_to_utc(wind_stop_met).fits
+			start_utc = self.clock.met_to_utc(start_met).fits
+			stop_utc = self.clock.met_to_utc(stop_met).fits
+			wind_start_utc = self.clock.met_to_utc(wind_start_met).fits
+			wind_stop_utc = self.clock.met_to_utc(wind_stop_met).fits
 			detector = sn_trig['detector'].values
 			bayes = sn_trig['bayes']
 			c = {'start_utc':start_utc,

@@ -6,7 +6,8 @@ from scipy.interpolate import interp1d
 import os
 
 
-def get_lag(data,band,bins,wind=None,sigma = 4,mcmc_num = 500,plot_savedir = None):
+
+def get_lag(data,band,bins,wind=None,sigma = 4,mcmc_num = 500,plot_savedir = None,Positive_lag_positive_value = True):
 	
 	binsize = bins[1]-bins[0]
 	t_c = 0.5*(bins[1:]+bins[:-1])
@@ -59,12 +60,16 @@ def get_lag(data,band,bins,wind=None,sigma = 4,mcmc_num = 500,plot_savedir = Non
 				return_list.append([index_,lag_all,np.sqrt(lag_errl2),np.sqrt(lag_errh2)])
 				cs0 = csi
 				cs_err0 = rate_err_i
-	
-	
+	lag0 = np.array(return_list).T
+	if Positive_lag_positive_value:
+		lag = lag0
+	else:
+		lag = np.vstack([lag0[0], -1 * lag0[1], lag0[3], lag0[2]])
+		
 	return {
 		'band':band,
 		'wind':wind,
-		'lag':np.array(return_list).T,
+		'lag':lag,
 		'lc':{
 			'time':t_c,
 			'rate':lc_list

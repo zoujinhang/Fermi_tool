@@ -288,10 +288,3 @@ def plot_sky_map(fermi_gbm, source, trigtime, savedirlist):
 
 
 
-
-
-
-
-
-
-
