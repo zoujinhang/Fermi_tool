@@ -99,14 +99,32 @@ def track_one(trig_a,geometry,pos,range_ = 10):
 			n_ni = len(ni)
 			if n_ni<=7:
 				seqi = seq.iloc[i]
+				seqi_value = seqi.values[1:]
+				seqi_value_min = np.min(seqi_value)+2
 				seq_values = seqi[ni].values
 				ne = seq_values[seq_values<=radius+range_]
-				tool_.append(len(ne)>=0.333*n_ni)
+				if (len(ne)>=0.333*n_ni):
+					if (np.min(ne)<=seqi_value_min):
+						tool_.append(True)
+					else:
+						tool_.append(False)
+				else:
+					tool_.append(False)
+				#tool_.append((len(ne)>=0.333*n_ni)&(np.min(ne)<=seqi_value_min))
 			else:
 				seqi = seq.iloc[i]
 				seq_values = seqi[ni].values
+				seqi_value = seqi.values
+				seqi_value_min = np.min(seqi_value)+2
 				ne = seq_values[seq_values<=radius+range_]
-				tool_.append(len(ne)>=2)
+				if (len(ne)>=2):
+					if (np.min(ne)<=seqi_value_min):
+						tool_.append(True)
+					else:
+						tool_.append(False)
+				else:
+					tool_.append(False)
+				#tool_.append((len(ne)>=2)&(np.min(ne)<=seqi_value_min))
 		return pd.Series(tool_,name='start',dtype=bool)
 	else:
 		print('seq is None!')
