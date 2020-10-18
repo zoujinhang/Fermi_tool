@@ -204,7 +204,7 @@ class Plot_track(object):
 			lc_bs_list = n0_c['lc_bs']
 			sigma = n0_c['sigma']
 			
-			axi = fig.add_subplot(gs[i])
+			axi = fig.add_subplot(gs[i+2])
 			axi.plot(0,0,color = 'k',label = overlap[i])
 			#plt.plot(0,0,color = '#f47920',label = 'background')
 			min_ = 100000
@@ -238,7 +238,7 @@ class Plot_track(object):
 				utc_start = self.clock.met_to_utc(t_i['wind_start']).fits
 				axi.set_xlabel('Start at ' + str(utc_start)+' (s)')
 		if sky_map:
-			ax_ = fig.add_subplot(gs[-2:],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
+			ax_ = fig.add_subplot(gs[:2],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
 			
 			if self.sources is not None:
 				source_name = self.sources.names

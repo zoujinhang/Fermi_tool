@@ -5,6 +5,7 @@ from astropy.stats import bayesian_blocks,sigma_clip,mad_std
 import operator
 from Data_analysis.Baseline import TD_bs,TD_baseline
 from Data_analysis.Bayesian_duration import background_correction,get_bayesian_duration
+from Data_analysis import ch_to_energy
 from scipy import stats
 import pandas as pd
 from astropy.coordinates import SkyCoord
@@ -138,8 +139,16 @@ def search_candidates(data,detectors,geometry):
 	lc = {}
 	for deteri in detectors:
 		ni = data[deteri]['events']
+		ni_ch = data[deteri]['ch_E']
 		t = ni['TIME'].values
-		ni_c = analysis_one(t,binsize = 0.064,wt = 0.5,binsize_else=0.01,distinguish = 1.0,sigma = 3)
+		ch = ni['PHA'].values
+		ch_n = ni_ch['CHANNEL'].values
+		e1 = ni_ch['E_MIN'].values
+		e2 = ni_ch['E_MAX'].values
+		t,e = ch_to_energy(t,ch,ch_n,e1,e2)
+		index_e = np.where((e>=8)&(e<=900))[0]
+		t = t[index_e]
+		ni_c = analysis_one(t,binsize = 0.05,wt = 0.5,binsize_else=0.01,distinguish = 1.0,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -172,7 +181,7 @@ def trig_filrate(trig_data,geometry,detectors):
 	trig_all.sort_values(by='start',inplace = True,ignore_index=True)
 	#print(tirg_all)
 	index_0  = trig_all['bayes']==0
-	tig_t = time_overlap(trig_all[index_0],n=2)
+	tig_t = time_overlap(trig_all[index_0],n=3)
 	tig_a0 = angle_overlap(tig_t,angle_overlap_,n = 2)
 	index_1  = trig_all['bayes']==1
 	tig_t = time_overlap(trig_all[index_1],n=2)
@@ -289,7 +298,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 		else:
 			trun_n = 0
 			for start0,stop0 in t_over_list:
-				if ((start<stop0)and(stop>start0)):#time overlap.
+				if ((start<stop0)and(stop>start0)and(np.abs(start0-start)<1)):#time overlap. (the definition of simultaneity)
 					trun_n = trun_n+1
 			if len(t_over_list) == trun_n:
 				t_over_list.append([start, stop])
@@ -310,7 +319,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 				
 			elif trun_n == 0:
 				snr_arr = np.array(snr_list)
-				if (len(t_over_list) >= n)or(snr_arr[snr_arr>case0].size>0):
+				if (len(t_over_list) >= n):#or(snr_arr[snr_arr>case0].size>0):        #Here are the judgment conditions,we can change the standed from here!!
 					t_over_array = np.array(t_over_list).T
 					t_max = t_over_array[1].max()
 					t_min = np.median(t_over_array[0])
@@ -399,7 +408,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 	for lc in lc_list:
 		lc_t,lc_rate = lc
 		#lc_t,lc_cs,lc_bs = TD_baseline(lc_t,lc_rate)
-		lc_cs,lc_bs,scale = TD_bs(lc_t,lc_rate,sigma = True,it = 6)
+		lc_cs,lc_bs,scale = TD_bs(lc_t,lc_rate,sigma = True,it = 1)
 		lc_bs_list.append(lc_bs)
 		#mask = sigma_clip(lc_cs,sigma=5,maxiters=5,stdfunc=mad_std).mask
 		#myfilter = list(map(operator.not_, mask))
@@ -468,7 +477,7 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 				nn_index = np.where(nn_lt_rate_new>0)[0]
 				nn_lt_t = lt_t[nn_index]
 				nn_lt_rate_new = nn_lt_rate_new[nn_index]
-				edges = bayesian_blocks(nn_lt_t,nn_lt_rate_new,fitness='events',gamma = np.exp(-5))
+				edges = bayesian_blocks(nn_lt_t,nn_lt_rate_new,fitness='events',gamma = np.exp(-4))
 				if len(edges)>=4:
 					result = background_correction(lt_t,lt_rate_new,edges,degree = 7)
 					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 3,max_snr=True)
