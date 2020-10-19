@@ -238,7 +238,7 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 		ni_over_set = set(ni_n)
 		ni_set = set(ni_list)
 		ni_union_set = list(ni_set & ni_over_set)   #get overlap
-		print('ni_union_set',ni_union_set)
+		#print('ni_union_set',ni_union_set)
 		num = len(ni_union_set)
 		if num>n:
 			new_name_list = new_name_list+ni_union_set
