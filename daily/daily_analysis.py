@@ -209,7 +209,7 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 	for i in range(tig_all.shape[0]):
 		t_i = tig_all.iloc[i]
 		ni_list = t_i['ni_list']
-		ni_snr_list = t_i['SNR']
+		#ni_snr_list = t_i['SNR']
 		#if len(ni_list) == 1:
 		#	if ni_snr_list[0]>=case0:
 		#		new_name_list = new_name_list+ni_list
@@ -238,6 +238,7 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 		ni_over_set = set(ni_n)
 		ni_set = set(ni_list)
 		ni_union_set = list(ni_set & ni_over_set)   #get overlap
+		print('ni_union_set',ni_union_set)
 		num = len(ni_union_set)
 		if num>n:
 			new_name_list = new_name_list+ni_union_set
@@ -299,7 +300,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 		else:
 			trun_n = 0
 			for start0,stop0 in t_over_list:
-				if (start<stop0)and(stop>start0)and(np.abs(start0-start)<1):#time overlap. (the definition of simultaneity)
+				if (start<stop0)and(stop>start0):#and(np.abs(start0-start)<1):#time overlap. (the definition of simultaneity)
 					trun_n = trun_n+1
 			if len(t_over_list) == trun_n:
 				t_over_list.append([start, stop])
