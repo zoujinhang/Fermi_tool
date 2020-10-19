@@ -148,7 +148,7 @@ def search_candidates(data,detectors,geometry):
 		t,e = ch_to_energy(t,ch,ch_n,e1,e2)
 		index_e = np.where((e>=8)&(e<=900))[0]
 		t = t[index_e]
-		ni_c = analysis_one(t,binsize = 0.05,wt = 0.5,binsize_else=0.01,distinguish = 1.0,sigma = 3)
+		ni_c = analysis_one(t,binsize = 0.05,wt = 0.064,binsize_else=0.01,distinguish = 1.0,sigma = 3)
 		trig_data[deteri] = ni_c
 		lc[deteri] = {'lc':ni_c['lc'],'lc_bs':ni_c['lc_bs'],'sigma':ni_c['sigma']}
 	c = trig_filrate(trig_data,geometry,detectors)
@@ -182,7 +182,7 @@ def trig_filrate(trig_data,geometry,detectors):
 	#print(tirg_all)
 	index_0  = trig_all['bayes']==0
 	tig_t = time_overlap(trig_all[index_0],n=3)
-	tig_a0 = angle_overlap(tig_t,angle_overlap_,n = 2)
+	tig_a0 = angle_overlap(tig_t,angle_overlap_,n = 3)
 	index_1  = trig_all['bayes']==1
 	tig_t = time_overlap(trig_all[index_1],n=2)
 	tig_a1 = angle_overlap(tig_t,angle_overlap_,n = 2)
@@ -210,52 +210,53 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 		t_i = tig_all.iloc[i]
 		ni_list = t_i['ni_list']
 		ni_snr_list = t_i['SNR']
-		if len(ni_list) == 1:
-			if ni_snr_list[0]>=case0:
-				new_name_list = new_name_list+ni_list
-				new_start = new_start + [t_i['start']]
-				new_stop = new_stop + [t_i['stop']]
-				new_wind_start = new_wind_start + [t_i['wind_start']]
-				new_wind_stop = new_wind_stop + [t_i['wind_stop']]
-				new_overlap = new_overlap + [ni_list]
+		#if len(ni_list) == 1:
+		#	if ni_snr_list[0]>=case0:
+		#		new_name_list = new_name_list+ni_list
+		#		new_start = new_start + [t_i['start']]
+		#		new_stop = new_stop + [t_i['stop']]
+		#		new_wind_start = new_wind_start + [t_i['wind_start']]
+		#		new_wind_stop = new_wind_stop + [t_i['wind_stop']]
+		#		new_overlap = new_overlap + [ni_list]
+		#
+		v_ni_list = []
+		for ni in ni_list:
+			over_list = list(angle_overlap[ni])
+			over_list.append(ni)
+			v_ni_list = v_ni_list+over_list
+		ni_n = list(set(v_ni_list))     #Remove duplicates
+		ni_n = np.array(ni_n)
+		ni_nm =[]
+		v_ni_list = np.array(v_ni_list)
+		for ni in ni_n:
+			index_n = np.where(v_ni_list == ni)[0]
+			nn = v_ni_list[index_n].size
+			ni_nm.append(nn)
+		ni_nm = np.array(ni_nm)
+		index_ = np.where(ni_nm>1)[0]
+		ni_n = ni_n[index_]                         #get overlap
+		ni_over_set = set(ni_n)
+		ni_set = set(ni_list)
+		ni_union_set = list(ni_set & ni_over_set)   #get overlap
+		num = len(ni_union_set)
+		if num>n:
+			new_name_list = new_name_list+ni_union_set
+			new_start = new_start + [t_i['start']]*num
+			new_stop = new_stop + [t_i['stop']]*num
+			new_wind_start = new_wind_start + [t_i['wind_start']]*num
+			new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
+			new_overlap = new_overlap + [ni_union_set]*num
+		'''
 		else:
-			v_ni_list = []
-			for ni in ni_list:
-				over_list = list(angle_overlap[ni])
-				over_list.append(ni)
-				v_ni_list = v_ni_list+over_list
-			ni_n = list(set(v_ni_list))     #Remove duplicates
-			ni_n = np.array(ni_n)
-			ni_nm =[]
-			v_ni_list = np.array(v_ni_list)
-			for ni in ni_n:
-				index_n = np.where(v_ni_list == ni)[0]
-				nn = v_ni_list[index_n].size
-				ni_nm.append(nn)
-			ni_nm = np.array(ni_nm)
-			index_ = np.where(ni_nm>1)[0]
-			ni_n = ni_n[index_]                         #get overlap
-			ni_over_set = set(ni_n)
-			ni_set = set(ni_list)
-			ni_union_set = list(ni_set & ni_over_set)   #get overlap
-			num = len(ni_union_set)
-			if num>n:
-				new_name_list = new_name_list+ni_union_set
-				new_start = new_start + [t_i['start']]*num
-				new_stop = new_stop + [t_i['stop']]*num
-				new_wind_start = new_wind_start + [t_i['wind_start']]*num
-				new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
-				new_overlap = new_overlap + [ni_union_set]*num
-			else:
-				for jd in range(len(ni_list)):
-					if ni_snr_list[jd]>=case0:
-						new_name_list.append(ni_list[jd])
-						new_start.append(t_i['start'])
-						new_stop.append(t_i['stop'])
-						new_wind_start.append(t_i['wind_start'])
-						new_wind_stop.append(t_i['wind_stop'])
-						new_overlap.append([ni_list[jd]])
-						
+			for jd in range(len(ni_list)):
+				if ni_snr_list[jd]>=case0:
+					new_name_list.append(ni_list[jd])
+					new_start.append(t_i['start'])
+					new_stop.append(t_i['stop'])
+					new_wind_start.append(t_i['wind_start'])
+					new_wind_stop.append(t_i['wind_stop'])
+					new_overlap.append([ni_list[jd]])
+		'''
 	c = {'start':np.array(new_start),
 	     'stop':np.array(new_stop),
 	     'wind_start':np.array(new_wind_start),
@@ -263,7 +264,7 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 	     'detector':new_name_list,
 	     'overlap':new_overlap}
 	return pd.DataFrame(c)
-		
+
 def time_overlap(tig_all,n = 3,case0 = 5):
 	'''
 	
@@ -298,7 +299,7 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 		else:
 			trun_n = 0
 			for start0,stop0 in t_over_list:
-				if ((start<stop0)and(stop>start0)and(np.abs(start0-start)<1)):#time overlap. (the definition of simultaneity)
+				if (start<stop0)and(stop>start0)and(np.abs(start0-start)<1):#time overlap. (the definition of simultaneity)
 					trun_n = trun_n+1
 			if len(t_over_list) == trun_n:
 				t_over_list.append([start, stop])
@@ -318,8 +319,12 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 			#	snr_list.append(snr)
 				
 			elif trun_n == 0:
-				snr_arr = np.array(snr_list)
-				if (len(t_over_list) >= n):#or(snr_arr[snr_arr>case0].size>0):        #Here are the judgment conditions,we can change the standed from here!!
+				#snr_arr = np.array(snr_list)
+				ni_ar, ni_inde = np.unique(np.array(ni_list), return_index=True)
+				if (len(ni_ar) >= n):#or(snr_arr[snr_arr>case0].size>0):        #Here are the judgment conditions,we can change the standed from here!!
+
+					#print('len ni:',len(ni_ar))
+					#print('ni_list',ni_ar)
 					t_over_array = np.array(t_over_list).T
 					t_max = t_over_array[1].max()
 					t_min = np.median(t_over_array[0])
@@ -332,7 +337,6 @@ def time_overlap(tig_all,n = 3,case0 = 5):
 					new_stop.append(t_max)
 					new_wind_start.append(t_center-wind_during_harf)
 					new_wind_stop.append(t_center+wind_during_harf)
-					ni_ar ,ni_inde = np.unique(np.array(ni_list),return_index=True)
 					new_name.append(list(ni_ar))
 					new_snr.append(list(np.array(snr_list)[ni_inde]))
 					t_over_list = [[start,stop]]
