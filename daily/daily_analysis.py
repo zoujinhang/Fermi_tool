@@ -240,13 +240,13 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 		ni_union_set = list(ni_set & ni_over_set)   #get overlap
 		#print('ni_union_set',ni_union_set)
 		num = len(ni_union_set)
-		if num>n:
-			new_name_list = new_name_list+ni_union_set
-			new_start = new_start + [t_i['start']]*num
-			new_stop = new_stop + [t_i['stop']]*num
-			new_wind_start = new_wind_start + [t_i['wind_start']]*num
-			new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
-			new_overlap = new_overlap + [ni_union_set]*num
+		#if num>n:
+		new_name_list = new_name_list+ni_union_set
+		new_start = new_start + [t_i['start']]*num
+		new_stop = new_stop + [t_i['stop']]*num
+		new_wind_start = new_wind_start + [t_i['wind_start']]*num
+		new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
+		new_overlap = new_overlap + [ni_union_set]*num
 		'''
 		else:
 			for jd in range(len(ni_list)):
