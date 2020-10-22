@@ -80,6 +80,7 @@ def track_one(trig_a,geometry,pos,range_ = 10):
 	radius = geometry.radius
 	t = trig_a['start'].values
 	seq = geometry.get_separation_with_time(t, pos)
+	earth_p = geometry.get_earth_point_with_time(t)
 	try:
 		ni_list = trig_a['overlap'].values
 	except:
@@ -98,33 +99,39 @@ def track_one(trig_a,geometry,pos,range_ = 10):
 	if seq is not None:
 		for i,ni in enumerate(ni_list):
 			n_ni = len(ni)
-			if n_ni<=7:
-				seqi = seq.iloc[i]
-				seqi_value = seqi.values[1:]
-				seqi_value_min = np.min(seqi_value)+2
-				seq_values = seqi[ni].values
-				ne = seq_values[seq_values<=radius+range_]
-				if (len(ne)>=0.333*n_ni):
-					if (np.min(ne)<=seqi_value_min):
-						tool_.append(True)
+			xyz_position,radius_deg = earth_p[i][:2]
+			seq_with_earth = xyz_position.separation(pos).value
+			if seq_with_earth>radius_deg:                                              #No earth sheltered
+				if n_ni<=7:
+					seqi = seq.iloc[i]
+					seqi_value = seqi.values[1:]
+					seqi_value_min = np.min(seqi_value)+4
+					seq_values = seqi[ni].values
+					ne = seq_values[seq_values<radius+range_]
+
+					if (len(ne)>=0.333*n_ni):
+						if (np.min(ne)<=seqi_value_min):
+							tool_.append(True)
+						else:
+							tool_.append(False)
 					else:
 						tool_.append(False)
+					#tool_.append((len(ne)>=0.333*n_ni)&(np.min(ne)<=seqi_value_min))
 				else:
-					tool_.append(False)
-				#tool_.append((len(ne)>=0.333*n_ni)&(np.min(ne)<=seqi_value_min))
+					seqi = seq.iloc[i]
+					seq_values = seqi[ni].values
+					seqi_value = seqi.values
+					seqi_value_min = np.min(seqi_value)+4
+					ne = seq_values[seq_values<=radius+range_]
+					if (len(ne)>=2):
+						if (np.min(ne)<=seqi_value_min):
+							tool_.append(True)
+						else:
+							tool_.append(False)
+					else:
+						tool_.append(False)
 			else:
-				seqi = seq.iloc[i]
-				seq_values = seqi[ni].values
-				seqi_value = seqi.values
-				seqi_value_min = np.min(seqi_value)+2
-				ne = seq_values[seq_values<=radius+range_]
-				if (len(ne)>=2):
-					if (np.min(ne)<=seqi_value_min):
-						tool_.append(True)
-					else:
-						tool_.append(False)
-				else:
-					tool_.append(False)
+				tool_.append(False)
 				#tool_.append((len(ne)>=2)&(np.min(ne)<=seqi_value_min))
 		return pd.Series(tool_,name='start',dtype=bool)
 	else:
@@ -192,7 +199,7 @@ def trig_filrate(trig_data,geometry,detectors):
 	return c
 	
 	
-def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
+def angle_overlap(tig_all,angle_overlap_,n = 2,case0 = 5):
 	'''
 	
 	:param tig_all:
@@ -200,6 +207,8 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 	:param n:
 	:return:
 	'''
+
+
 	new_name_list = []
 	new_start = []
 	new_stop = []
@@ -207,8 +216,13 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 	new_wind_stop = []
 	new_overlap = []
 	for i in range(tig_all.shape[0]):
+
+		#print('----------------------------------')
+
 		t_i = tig_all.iloc[i]
 		ni_list = t_i['ni_list']
+
+		#print('ni_list',ni_list)
 		#ni_snr_list = t_i['SNR']
 		#if len(ni_list) == 1:
 		#	if ni_snr_list[0]>=case0:
@@ -221,10 +235,13 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 		#
 		v_ni_list = []
 		for ni in ni_list:
-			over_list = list(angle_overlap[ni])
+			over_list = list(angle_overlap_[ni])
 			over_list.append(ni)
+			#print(ni+':',over_list)
 			v_ni_list = v_ni_list+over_list
 		ni_n = list(set(v_ni_list))     #Remove duplicates
+
+		#print('ni_n', ni_n)
 		ni_n = np.array(ni_n)
 		ni_nm =[]
 		v_ni_list = np.array(v_ni_list)
@@ -233,20 +250,22 @@ def angle_overlap(tig_all,angle_overlap,n = 2,case0 = 5):
 			nn = v_ni_list[index_n].size
 			ni_nm.append(nn)
 		ni_nm = np.array(ni_nm)
-		index_ = np.where(ni_nm>1)[0]
+		#print('ni_nm',ni_nm)
+		index_ = np.where(ni_nm>=2)[0]
 		ni_n = ni_n[index_]                         #get overlap
 		ni_over_set = set(ni_n)
 		ni_set = set(ni_list)
 		ni_union_set = list(ni_set & ni_over_set)   #get overlap
 		#print('ni_union_set',ni_union_set)
+		#print('----------------------------------')
 		num = len(ni_union_set)
-		#if num>n:
-		new_name_list = new_name_list+ni_union_set
-		new_start = new_start + [t_i['start']]*num
-		new_stop = new_stop + [t_i['stop']]*num
-		new_wind_start = new_wind_start + [t_i['wind_start']]*num
-		new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
-		new_overlap = new_overlap + [ni_union_set]*num
+		if num>=n:
+			new_name_list = new_name_list+ni_union_set
+			new_start = new_start + [t_i['start']]*num
+			new_stop = new_stop + [t_i['stop']]*num
+			new_wind_start = new_wind_start + [t_i['wind_start']]*num
+			new_wind_stop = new_wind_stop + [t_i['wind_stop']]*num
+			new_overlap = new_overlap + [ni_union_set]*num
 		'''
 		else:
 			for jd in range(len(ni_list)):
@@ -487,13 +506,25 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 					result = background_correction(lt_t,lt_rate_new,edges,degree = 7)
 					startedges,stopedges,new_snr = get_bayesian_duration(result,sigma = 3,max_snr=True)
 					if startedges.size == stopedges.size:
-						if startedges.size >0:
-							
-							good_wind_start = good_wind_start+[range_t_min]*startedges.size
-							good_wind_stop = good_wind_stop+[range_t_max]*startedges.size
-							good_start = good_start + list(startedges)
-							good_stop = good_stop + list(stopedges)
-							good_SNR = good_SNR + list(new_snr)
+						if startedges.size > 0:
+							ba_n = 0
+							for i in range(len(startedges)):
+								ba_t_index = np.where((lt_t>=startedges[i])&(lt_t<=stopedges[i]))[0]
+								ba_cs = lt_cs[ba_t_index]
+								if ba_cs.max()>scale*sigma:
+									ba_n  = ba_n + 1
+									good_wind_start.append(range_t_min)
+									good_wind_stop.append(range_t_max)
+									good_start.append(startedges[i])
+									good_stop.append(stopedges[i])
+									good_SNR.append(new_snr[i])
+							if ba_n == 0:
+								wind_start.append(range_t_min)
+								wind_stop.append(range_t_max)
+								start.append(lc_ti[0])
+								stop.append(lc_ti[-1])
+								SNR.append(m_SNR)
+
 						else:
 							wind_start.append(range_t_min)
 							wind_stop.append(range_t_max)
