@@ -5,7 +5,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import ListedColormap, BoundaryNorm
 import cartopy.crs as ccrs
 from matplotlib.gridspec import GridSpec
-
+from astropy.coordinates import SkyCoord
 
 class Plot_serch(object):
 	
@@ -239,15 +239,16 @@ class Plot_track(object):
 				axi.set_xlabel('Start at ' + str(utc_start)+' (s)')
 		if sky_map:
 			ax_ = fig.add_subplot(gs[:2],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
-			
+			points = {'name':['CygX-1','SocX-1','VeleX-1','Crab'],
+				  'coord':SkyCoord(ra=[299.591,224.980,135.529,83.633],dec=[35.2020,-15.639,-40.5547,22.0069])}
 			if self.sources is not None:
 				source_name = self.sources.names
 				index = np.where(np.array(source_name) == sn)
 				pos = self.sources.positions[index]
 			else:
 				pos = None
-			self.geometry.detector_plot(ax=ax_, time=t_i['start'], show_bodies=True, size=0.5,source = pos,highlight=overlap)
-			
+			self.geometry.detector_plot(ax=ax_, time=t_i['start'], show_bodies=True, size=0.5,source = pos,highlight=overlap,points=points)
+
 			
 			
 	def get_threshold_responses_size(self,sn):
@@ -311,13 +312,15 @@ class Plot_track(object):
 				plt.xlabel('Start at ' + str(utc_start)+' (s)')
 		if sky_map:
 			ax_ = fig.add_subplot(gs[:2],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
+			points = {'name':['CygX-1','SocX-1','VeleX-1','Crab'],
+				  'coord':SkyCoord(ra=[299.591,224.980,135.529,83.633],dec=[35.2020,-15.639,-40.5547,22.0069])}
 			if self.sources is not None:
 				source_name = self.sources.names
 				index = np.where(np.array(source_name) == sn)
 				pos = self.sources.positions[index]
 			else:
 				pos = None
-			self.geometry.detector_plot(ax=ax_, time=t_i['start'], show_bodies=True, size=0.5, source=pos,highlight=overlap)
+			self.geometry.detector_plot(ax=ax_, time=t_i['start'], show_bodies=True, size=0.5, source=pos,highlight=overlap,points=points)
 		
 		
 	def get_all_responses_size(self,sn):
