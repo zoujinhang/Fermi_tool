@@ -240,7 +240,7 @@ class Plot_track(object):
 		if sky_map:
 			ax_ = fig.add_subplot(gs[:2],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
 			points = {'name':['CygX-1','SocX-1','VeleX-1','Crab'],
-				  'coord':SkyCoord(ra=[299.591,224.980,135.529,83.633],dec=[35.2020,-15.639,-40.5547,22.0069])}
+				  'coord':SkyCoord(ra=[299.591,224.980,135.529,83.633],dec=[35.2020,-15.639,-40.5547,22.0069],frame='icrs',unit='deg')}
 			if self.sources is not None:
 				source_name = self.sources.names
 				index = np.where(np.array(source_name) == sn)
@@ -313,7 +313,7 @@ class Plot_track(object):
 		if sky_map:
 			ax_ = fig.add_subplot(gs[:2],projection=ccrs.Mollweide(central_longitude=180),facecolor = '#f6f5ec')
 			points = {'name':['CygX-1','SocX-1','VeleX-1','Crab'],
-				  'coord':SkyCoord(ra=[299.591,224.980,135.529,83.633],dec=[35.2020,-15.639,-40.5547,22.0069])}
+				  'coord':SkyCoord(ra=[299.591,224.980,135.529,83.633],dec=[35.2020,-15.639,-40.5547,22.0069],frame='icrs',unit='deg')}
 			if self.sources is not None:
 				source_name = self.sources.names
 				index = np.where(np.array(source_name) == sn)
