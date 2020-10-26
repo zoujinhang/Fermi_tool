@@ -519,24 +519,27 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 									good_stop.append(stopedges[i])
 									good_SNR.append(new_snr[i])
 							if ba_n == 0:
+								if m_SNR>4.5*scale:
+									wind_start.append(range_t_min)
+									wind_stop.append(range_t_max)
+									start.append(lc_ti[0])
+									stop.append(lc_ti[-1])
+									SNR.append(m_SNR)
+
+						else:
+							if m_SNR>4.5*scale:
 								wind_start.append(range_t_min)
 								wind_stop.append(range_t_max)
 								start.append(lc_ti[0])
 								stop.append(lc_ti[-1])
 								SNR.append(m_SNR)
-
-						else:
+					else:
+						if m_SNR>4.5*scale:
 							wind_start.append(range_t_min)
 							wind_stop.append(range_t_max)
 							start.append(lc_ti[0])
 							stop.append(lc_ti[-1])
 							SNR.append(m_SNR)
-					else:
-						wind_start.append(range_t_min)
-						wind_stop.append(range_t_max)
-						start.append(lc_ti[0])
-						stop.append(lc_ti[-1])
-						SNR.append(m_SNR)
 				else:
 					if lc_dt<=2:#Temporary abandonment
 						#print ('work with binsize else!')
@@ -582,29 +585,33 @@ def analysis_one(t,binsize = 0.064,wt = 0.064,binsize_else = 0.01,distinguish=1.
 									good_stop = good_stop + list(stopedges)
 									good_SNR = good_SNR + list(new_snr)
 								else:
+									if m_SNR > 4.5 * scale:
+										wind_start.append(range_t_min)
+										wind_stop.append(range_t_max)
+										start.append(lc_ti[0])
+										stop.append(lc_ti[-1])
+										SNR.append(m_SNR)
+							else:
+								if m_SNR > 4.5 * scale:
 									wind_start.append(range_t_min)
 									wind_stop.append(range_t_max)
 									start.append(lc_ti[0])
 									stop.append(lc_ti[-1])
 									SNR.append(m_SNR)
-							else:
+						else:
+							if m_SNR > 4.5 * scale:
 								wind_start.append(range_t_min)
 								wind_stop.append(range_t_max)
 								start.append(lc_ti[0])
 								stop.append(lc_ti[-1])
 								SNR.append(m_SNR)
-						else:
+					else:
+						if m_SNR > 4.5 * scale:
 							wind_start.append(range_t_min)
 							wind_stop.append(range_t_max)
 							start.append(lc_ti[0])
 							stop.append(lc_ti[-1])
 							SNR.append(m_SNR)
-					else:
-						wind_start.append(range_t_min)
-						wind_stop.append(range_t_max)
-						start.append(lc_ti[0])
-						stop.append(lc_ti[-1])
-						SNR.append(m_SNR)
 	c = {
 		'lc':lc_list,
 		'lc_bs':lc_bs_list,
