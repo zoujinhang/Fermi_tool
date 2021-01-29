@@ -8,6 +8,7 @@ import pymultinest
 from .analysis import Analyzer
 from .PlotMarginalModes import PlotMarginalModes
 from scipy.stats import chi2
+from scipy.special import factorial
 import matplotlib.pyplot as plt
 import ctypes
 import sys
@@ -39,16 +40,41 @@ class Prior(object):
 			return 10**self.limit_width*cube+self.low
 		else:
 			return self.limit_width*cube+self.low
-		
+
+
+def pstat(rate_sp,rate_bs,rate_md,dt,N,Ni,sigma):
+
+	#N = np.round(rate_sp*dt)
+	r = (rate_md+rate_bs)*dt
+	#print('---------------------')
+	#print('r',r)
+	#print('Ni',Ni)
+	#Ni = factorial(N)
+	loglik = (N*np.log(r)-Ni-r).sum()
+	#print('loglik',loglik,'dt',dt)
+	#print('---------------------')
+	return loglik
+
+def chi(rate_sp,rate_bs,rate_md,dt,N,Ni,sigma):
+
+	#sigma = np.sqrt(rate_sp/dt)
+	#sigma[sigma <=0 ] = 1
+	return -0.5*((rate_sp-rate_bs-rate_md)**2/sigma**2).sum()
+
+stats_ = {'chi':chi,'pstat':pstat}
+
+
 class Fit(object):
 	
-	def __init__(self,spectrumlist,model,priorlist,parameters,reference =False,reference_w = 0.0001):
+	def __init__(self,spectrumlist,model,priorlist,parameters,stats = 'chi',reference =False,reference_w = 0.0001):
 		'''
 		
 		:param spectrumlist:
 		:param modellist:
 		'''
-		
+
+		self.log_like_f = stats_[stats]
+		self.stats = stats
 		self.spec_num = len(spectrumlist)
 		self.spectrumlist = spectrumlist
 		self.model = model
@@ -77,7 +103,8 @@ class Fit(object):
 					
 					if True in np.isnan(rate):
 						return -np.inf
-					sp = rate.mean()
+					#sp = rate.mean()
+					sp = rate.mean()*(spec.e_hi[i]-spec.e_lo[i])
 					spec1[i] = sp
 				except:
 					print('there are something wrong in your model!')
@@ -93,14 +120,30 @@ class Fit(object):
 					loglike = loglike + (1-self.reference_rate)*loglike_data + self.reference_rate*loglike_refer
 				
 				else:
-					loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
+
+					loglike = loglike + self.log_like_f(spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.bs_spectrum[spec.effective_index[0]:spec.effective_index[-1]],
+									    yu[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.time,
+									    spec.spc_count[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.spc_count_factorial[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])
+					#loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
 			else:
 				if self.reference:
 					loglike_refer = - 0.5 * (((spec1 - spec.reference) ) ** 2).sum()#/ spec.reference
 					loglike_data = -0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
 					loglike = loglike + (1-self.reference_rate)*loglike_data + self.reference_rate*loglike_refer
 				else:
-					loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
+					loglike = loglike + self.log_like_f(spec.spectrum,
+									    spec.bs_spectrum,
+									    yu,
+									    spec.time,
+									    spec.spc_count,
+									    spec.spc_count_factorial,
+									    spec.spectrum_err)
+
+					#loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
 		return loglike
 	
 	if c_lib_link is not None:
@@ -119,13 +162,27 @@ class Fit(object):
 				spec1 = self.get_A(rate,spec.e_lo,spec.e_hi,spec.e_add_num)
 				yu = spec.transform(spec1)
 				if spec.effective_index is not None:
-					if self.reference:
-						loglike = loglike - 0.5 * (((spec1[spec.effective_index1[0]:spec.effective_index1[-1]] - spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) / spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) ** 2).sum()
-					loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
+					#if self.reference:
+					#	loglike = loglike - 0.5 * (((spec1[spec.effective_index1[0]:spec.effective_index1[-1]] - spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) / spec.reference[spec.effective_index1[0]:spec.effective_index1[-1]]) ** 2).sum()
+					#loglike = loglike-0.5*(((yu[spec.effective_index[0]:spec.effective_index[-1]] -spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]])/spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])**2).sum()
+					loglike = loglike + self.log_like_f(spec.spectrum[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.bs_spectrum[spec.effective_index[0]:spec.effective_index[-1]],
+									    yu[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.time,
+									    spec.spc_count[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.spc_count_factorial[spec.effective_index[0]:spec.effective_index[-1]],
+									    spec.spectrum_err[spec.effective_index[0]:spec.effective_index[-1]])
 				else:
-					if self.reference:
-						loglike = loglike - 0.5 * (((spec1 - spec.reference) / spec.reference) ** 2).sum()
-					loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
+					#if self.reference:
+					#	loglike = loglike - 0.5 * (((spec1 - spec.reference) / spec.reference) ** 2).sum()
+					#loglike = loglike-0.5*(((yu - spec.spectrum)/spec.spectrum_err)**2).sum()
+					loglike = loglike + self.log_like_f(spec.spectrum,
+									    spec.bs_spectrum,
+									    yu,
+									    spec.time,
+									    spec.spc_count,
+									    spec.spc_count_factorial,
+									    spec.spectrum_err)
 			return loglike
 	
 	if c_lib_link is not None:
@@ -138,7 +195,9 @@ class Fit(object):
 			ret = (ctypes.c_double * n_e)()
 			clib.A_spec(spe,e_lo,e_hi,ret,n_spe,add_n,n_e)
 			return np.array(ret)
-	
+	def pgstat(self,):
+		pass
+
 	def run(self,outputfiles_basename,resume = False, verbose = True):
 		'''
 		
@@ -260,7 +319,7 @@ class Fit(object):
 			e_c0 = spec.e_c
 			e_c,xxx = spec.get_reference()
 			xxx_sp = spec.transform(xxx)/(spec.e_max-spec.e_min)
-			sp = spec.spectrum/(spec.e_max-spec.e_min)
+			sp = (spec.spectrum-spec.bs_spectrum)/(spec.e_max-spec.e_min)
 			e_add = spec.e_add
 			rate = self.model(e_add,best_value)
 			spec1 = self.get_A(rate,spec.e_lo,spec.e_hi,spec.e_add_num)
@@ -295,7 +354,7 @@ class Fit(object):
 		for spec in self.spectrumlist:
 			e_c0 = spec.e_c
 			#e_c = spec.e_c1
-			sp = spec.spectrum/(spec.e_max-spec.e_min)
+			sp = (spec.spectrum-spec.bs_spectrum)/(spec.e_max-spec.e_min)
 			e_add = spec.e_add
 			rate = self.model(e_add, best_value)
 			spec1 = self.get_A(rate, spec.e_lo, spec.e_hi, spec.e_add_num)
@@ -325,7 +384,7 @@ class Fit(object):
 	def plot_data_in_reference(self,ax = None):
 		for spec in self.spectrumlist:
 			e_c0 = spec.e_c
-			sp = spec.spectrum/(spec.e_max-spec.e_min)
+			sp = (spec.spectrum-spec.bs_spectrum)/(spec.e_max-spec.e_min)
 			sp_er = spec.spectrum_err/np.sqrt(spec.e_max-spec.e_min)
 			e_c,xxx = spec.get_reference()
 			xxx_sp = spec.transform(xxx)/(spec.e_max-spec.e_min)
@@ -416,16 +475,28 @@ class Fit(object):
 					if(j == i):
 						plt.xlabel(self.parameters[j],size = 30)
 						plt.ylabel(self.parameters[i-1],size = 30)
-		
+
+def my_log_factorial(arr):
+
+	ret = np.zeros(len(arr))
+	for i,n in enumerate(arr):
+		a = np.arange(1,int(n)+1,1)
+		ret[i] = (np.log(a)).sum()
+	return ret
+
+
 class Spectrum(object):
 	'''
 	
 	'''
-	def __init__(self,spectrum,spectrum_err,rsp_link,effective_band=None,
-	             time = None,
-	             spectrum_name = 'data',e_add_num = 20):
+	def __init__(self,spectrum,rsp_link,bs_spectrum = None,
+		     spectrum_err = None,
+		     effective_band=None,
+	             time = 1,
+	             spectrum_name = 'data',e_add_num = 10):
 		hl = fits.open(rsp_link)
 		matr = hl[2].data['MATRIX']
+		#if len(matr[-1]) != 128:
 		matr[-1] = np.zeros(128)
 		matr = np.vstack(matr)
 		self.time = time
@@ -440,8 +511,21 @@ class Spectrum(object):
 		
 		self.e_c = np.sqrt(self.e_min*self.e_max)
 		self.spectrum = np.array(spectrum)#/(self.e_max-self.e_min)
-		self.spectrum_err = np.array(spectrum_err)#/np.sqrt(self.e_max-self.e_min)
-		self.Y = np.mat(self.spectrum)
+		self.spc_count = np.round(self.spectrum*self.time)
+		#lg_factorial = self.spc_count*np.log(self.spc_count)-self.spc_count
+		#lg_factorial[self.spc_count<=0] = 0
+		#lg_factorial = np.log(factorial(self.spc_count))
+		lg_factorial = my_log_factorial(self.spc_count)
+		self.spc_count_factorial = lg_factorial
+		if spectrum_err is None:
+			self.spectrum_err = np.sqrt(self.spectrum/self.time)
+		else:
+			self.spectrum_err = np.array(spectrum_err)#/np.sqrt(self.e_max-self.e_min)
+		if bs_spectrum is None:
+			self.bs_spectrum = np.zeros(len(self.spectrum))
+		else:
+			self.bs_spectrum = np.array(bs_spectrum)
+		self.Y = np.mat(self.spectrum-self.bs_spectrum)
 		self.Y_E = np.mat(self.spectrum_err)
 		self.effective_band = effective_band
 		if effective_band is not None:
@@ -466,6 +550,7 @@ class Spectrum(object):
 			e = np.linspace(e_lo[i], e_hi[i], nn)
 			e_add = np.concatenate((e_add,e))
 		return e_add
+	'''
 	def change_spectrum(self,spectrum,spectrum_err,effective_band=None):
 		self.spectrum = np.array(spectrum)
 		self.spectrum_err = np.array(spectrum_err)
@@ -482,7 +567,8 @@ class Spectrum(object):
 			self.effective_index = [index_[0],index_[-1]+1]
 		self.e_add = self.get_e_add(self.e_lo, self.e_hi, self.e_add_num)
 		self.reference = self.get_reference()[1]
-		
+
+	'''
 	def get_reference(self):
 		x0 = np.zeros(len(self.e_lo))
 		bounds = [[0,+np.inf]]*len(self.e_lo)
@@ -507,8 +593,6 @@ class Spectrum(object):
 		M = (X*self.R-self.Y)/self.Y_E
 		S = M*M.T
 		return S[0,0]
-
-
 
 
 
